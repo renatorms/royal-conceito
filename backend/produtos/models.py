@@ -18,14 +18,17 @@ class Produto(
 ):  # criamos uma classe Produto que herda modelos da classe Model do Django
     nome = models.CharField(
         max_length=100
-    )  # definimos um campo de texto para o nome do produto com tamanho máximo de 100 caracteres
+    )  # produto com tamanho máximo de 100 caracteres
     preco = models.DecimalField(
         max_digits=10, decimal_places=2
-    )  #  definição de um campo decimal para o preço do produto, com até 10 dígitos no total e 2 casas decimais
+    )  #  preço do produto, com até 10 dígitos no total e 2 casas decimais
     marca = models.CharField(
         max_length=50, default="Sem marca", blank=True
-    )  # definição de um campo de texto para a marca do produto com tamnho máximo de 50 caracteres
-    categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE)
+    )  # definição de um campo de texto para a marca do produto com tamanho máximo de 50 caracteres
+    categoria = models.ForeignKey(
+        Categoria, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    # SET_NULL: deletar categoria não remove o produto do sistema
 
     def __str__(self):
         return (
@@ -36,7 +39,7 @@ class Produto(
 class Variacao(models.Model):
     produto = models.ForeignKey(
         Produto, on_delete=models.CASCADE
-    )  # chave estrangeira para o produto, com exclusão em cascata
+    )  # deleta categoria e todos os produtos
     tamanho = models.CharField(max_length=3)
     estoque = models.IntegerField(default=0)
 

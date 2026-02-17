@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
     "produtos",  # Nosso app de produtos
+    "pedidos",  # Nosso app de pedidos
 ]
 
 MIDDLEWARE = [
