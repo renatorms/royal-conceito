@@ -43,5 +43,9 @@ class Variacao(models.Model):
     tamanho = models.CharField(max_length=3)
     estoque = models.IntegerField(default=0)
 
+    class Meta:
+        verbose_name = "Variação"
+        verbose_name_plural = "Variações"
+
     def __str__(self):
         return f"{self.produto.nome} - {self.tamanho}"

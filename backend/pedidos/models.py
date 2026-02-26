@@ -1,6 +1,5 @@
 from django.contrib.auth.models import User
 from django.db import models
-
 from produtos.models import Variacao
 
 
@@ -30,3 +29,17 @@ class ItemPedido(models.Model):
 
     def __str__(self):
         return f"{self.quantidade}x - {self.variacao} - (Pedido #{self.pedido.id})"
+
+
+class Endereco(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    rua = models.CharField(max_length=100)
+    numero = models.IntegerField()
+    complemento = models.CharField(max_length=100, blank=True, null=True)
+    bairro = models.CharField(max_length=100)
+    cidade = models.CharField(max_length=100)
+    estado = models.CharField(max_length=2)
+    cep = models.CharField(max_length=9)
+
+    def __str__(self):
+        return f"{self.rua}, {self.numero} - {self.cidade}/{self.estado}"
