@@ -1,4 +1,4 @@
-from django.db.models.signals import post_save
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
 from .models import ItemPedido
@@ -10,3 +10,22 @@ def diminui_estoque(sender, instance, created, **kwargs):
         variacao = instance.variacao
         variacao.estoque -= instance.quantidade
         variacao.save()
+
+
+@receiver(post_save, sender=ItemPedido)
+def atualiza_total_pedido(
+    sender, instance, **kwargs
+):  # recalcula total de pedido automaticamente
+    pedido = instance.pedido
+    itens = pedido.itempedido_set.all()
+    total = sum(item.quantidade * item.preco_unitario for item in itens)
+    pedido.total = total
+    pedido.save()
+
+
+@receiver(post_delete, sender=ItemPedido)
+def atualiza_total_ao_deletar(sender, instance, **kwargs):
+    pedido = instance.pedido
+    itens = pedido.itempedido_set.all()
+    pedido.total = sum(item.quantidade * item.preco_unitario for item in itens)
+    pedido.save()
