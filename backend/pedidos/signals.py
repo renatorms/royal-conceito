@@ -8,6 +8,14 @@ from .models import ItemPedido
 def diminui_estoque(sender, instance, created, **kwargs):
     if created:
         variacao = instance.variacao
+
+        # Valida se tem estoque suficiente
+        if variacao.estoque < instance.quantidade:
+            raise ValueError(
+                f"Estoque insuficiente para {variacao.produto.nome} - {variacao.tamanho}! "
+                f"Disponível: {variacao.estoque}, Solicitado: {instance.quantidade}"
+            )
+
         variacao.estoque -= instance.quantidade
         variacao.save()
 
