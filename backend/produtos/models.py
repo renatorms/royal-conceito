@@ -1,45 +1,43 @@
-from django.db import models  # importas a biblioteca de modelos do Django
+from django.db import models
 
 
-class Categoria(
-    models.Model
-):  # criamos uma classe Categoria que herda modelos da classe Model do Django
-    nome = models.CharField(
-        max_length=100
-    )  # definição de um campo de texto para o nome da categoria com tamanho máximo de 100 caracteres
+class Categoria(models.Model):
+    nome = models.CharField(max_length=100)
 
     def __str__(self):
         return self.nome
-        # método __str__ para retornar o nome da categoria como representação em string
 
 
-class Produto(
-    models.Model
-):  # criamos uma classe Produto que herda modelos da classe Model do Django
-    nome = models.CharField(
-        max_length=100
-    )  # produto com tamanho máximo de 100 caracteres
-    preco = models.DecimalField(
-        max_digits=10, decimal_places=2
-    )  #  preço do produto, com até 10 dígitos no total e 2 casas decimais
-    marca = models.CharField(
-        max_length=50, default="Sem marca", blank=True
-    )  # definição de um campo de texto para a marca do produto com tamanho máximo de 50 caracteres
+class Marca(models.Model):
+    nome = models.CharField(max_length=100, unique=True)
+
+    class Meta:
+        verbose_name = "Marca"
+        verbose_name_plural = "Marcas"
+        ordering = ["nome"]
+
+    def __str__(self):
+        return self.nome
+
+
+class Produto(models.Model):
+    nome = models.CharField(max_length=100)
+    preco = models.DecimalField(max_digits=10, decimal_places=2)
+    marca = models.ForeignKey(
+        Marca, on_delete=models.SET_NULL, null=True, blank=True, related_name="produtos"
+    )
     categoria = models.ForeignKey(
         Categoria, on_delete=models.SET_NULL, null=True, blank=True
     )
     # SET_NULL: deletar categoria não remove o produto do sistema
 
     def __str__(self):
-        return (
-            self.nome
-        )  # método __str__ para retornar o nome do produto como representação em string
+        return self.nome
 
 
 class Variacao(models.Model):
-    produto = models.ForeignKey(
-        Produto, on_delete=models.CASCADE
-    )  # deleta categoria e todos os produtos
+    produto = models.ForeignKey(Produto, on_delete=models.CASCADE)
+    # CASCADE: variação não existe sem produto
     tamanho = models.CharField(max_length=3)
     estoque = models.IntegerField(default=0)
 
