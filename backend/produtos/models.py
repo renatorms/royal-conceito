@@ -36,7 +36,9 @@ class Produto(models.Model):
 
 
 class Variacao(models.Model):
-    produto = models.ForeignKey(Produto, on_delete=models.CASCADE)
+    produto = models.ForeignKey(
+        Produto, on_delete=models.CASCADE, related_name="variacoes"
+    )
     # CASCADE: variação não existe sem produto
     tamanho = models.CharField(max_length=3)
     estoque = models.IntegerField(default=0)
