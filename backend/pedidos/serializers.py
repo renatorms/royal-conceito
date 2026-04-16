@@ -25,11 +25,13 @@ class ItemPedidoSerializer(serializers.ModelSerializer):
             "produto_tamanho",
             "quantidade",
             "preco_unitario",
-            "subtotal",
+            "produto_subtotal",
         ]
 
 
 class PedidoSerializer(serializers.ModelSerializer):
+    itens = ItemPedidoSerializer(many=True, read_only=True)
+
     class Meta:
         model = Pedido
-        fields = "__all__"
+        fields = ["id", "cliente", "itens", "data_pedido", "total", "status"]
