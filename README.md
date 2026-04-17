@@ -19,7 +19,7 @@
 
 ## 📋 About
 
-**Royal Conceito** is a premium fashion store with 2 physical locations and 5 years in the market, selling brands like Lacoste, Gucci, Boss, Armani, Burberry, and others.
+**Royal Conceito** is a premium fashion store with 2 physical locations and 5 years in the market.
 
 This project is the backend for their e-commerce platform — a REST API built with Django and Django REST Framework that handles product catalog, inventory management, and order processing with automated stock control.
 
