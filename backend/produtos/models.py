@@ -46,6 +46,7 @@ class Variacao(models.Model):
     class Meta:
         verbose_name = "Variação"
         verbose_name_plural = "Variações"
+        unique_together = ["produto", "tamanho"]
 
     def __str__(self):
         return f"{self.produto.nome} - {self.tamanho}"

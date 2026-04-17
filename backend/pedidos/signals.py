@@ -25,7 +25,7 @@ def atualiza_total_pedido(
     sender, instance, **kwargs
 ):  # recalcula total de pedido automaticamente
     pedido = instance.pedido
-    itens = pedido.itempedido_set.all()
+    itens = pedido.itens.all()
     total = sum(item.quantidade * item.preco_unitario for item in itens)
     pedido.total = total
     pedido.save()
@@ -34,6 +34,6 @@ def atualiza_total_pedido(
 @receiver(post_delete, sender=ItemPedido)
 def atualiza_total_ao_deletar(sender, instance, **kwargs):
     pedido = instance.pedido
-    itens = pedido.itempedido_set.all()
+    itens = pedido.itens.all()
     pedido.total = sum(item.quantidade * item.preco_unitario for item in itens)
     pedido.save()
