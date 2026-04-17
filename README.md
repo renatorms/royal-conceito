@@ -2,19 +2,16 @@
 
 # 👑 Royal Conceito
 
-### Full-Stack E-Commerce Platform for a Fashion Retail Store
+### E-Commerce Platform for a Premium Fashion Store
 
-![Django](https://img.shields.io/badge/Django-092E20?style=for-the-badge&logo=django&logoColor=white)
-![Django REST Framework](https://img.shields.io/badge/DRF-ff1709?style=for-the-badge&logo=django&logoColor=white)
-![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
-![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
-![Render](https://img.shields.io/badge/Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)
-![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![Django](https://img.shields.io/badge/Django-6.0-092E20?style=for-the-badge&logo=django&logoColor=white)
+![Django REST Framework](https://img.shields.io/badge/DRF-3.16-ff1709?style=for-the-badge&logo=django&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-Dev-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
 
-**A production-ready e-commerce platform built for a real brick-and-mortar fashion store, bridging the gap between physical retail and online sales.**
+**Backend for a real e-commerce platform, built for a brick-and-mortar fashion store expanding into online sales.**
 
-[Features](#-features) · [Tech Stack](#-tech-stack) · [Architecture](#-architecture) · [Getting Started](#-getting-started) · [System Flows](#-system-flows) · [API Endpoints](#-api-endpoints) · [Roadmap](#-roadmap)
+[About](#-about) · [Features](#-features) · [Tech Stack](#-tech-stack) · [Architecture](#-architecture) · [API Endpoints](#-api-endpoints) · [Getting Started](#-getting-started) · [Roadmap](#-roadmap)
 
 </div>
 
@@ -22,277 +19,236 @@
 
 ## 📋 About
 
-**Royal Conceito** is a full-stack e-commerce platform developed for a physical fashion retail store expanding into online sales. The project delivers a complete digital storefront — from product browsing to automated payment processing — with a custom admin dashboard for the store owner to manage products, inventory, and orders in real time.
+**Royal Conceito** is a premium fashion store with 2 physical locations and 5 years in the market, selling brands like Lacoste, Gucci, Boss, Armani, Burberry, and others.
 
-Built with a modern decoupled architecture (Django REST API + React SPA), the platform integrates a payment gateway for seamless checkout with PIX, credit card, and boleto support.
+This project is the backend for their e-commerce platform — a REST API built with Django and Django REST Framework that handles product catalog, inventory management, and order processing with automated stock control.
 
-> 🏪 **Real client, real business** — Not a tutorial project. Built to solve actual needs of a fashion retail store.
+> 🏪 **Real client, real business** — Built to solve actual needs of a fashion retail store.
 
 ---
 
-## ✨ Features
+## ✨ Current Features
 
-### 🛍️ Storefront (Customer-Facing)
+### Product Management
+- Full product catalog with categories, brands, and size variations
+- Automated stock tracking per size (S, M, L, G, GG, etc.)
+- `unique_together` constraint preventing duplicate size entries
 
-- **Dynamic Home Page** — Header with logo, category navigation, search bar, and cart counter; product grid with the latest 20 items; footer with social links and WhatsApp contact
-- **Product Catalog** — Filterable grid by category (dynamic fetch), search with debounce to optimize API calls
-- **Product Detail Page** — Image gallery with click-to-swap, size selector (required), real-time stock validation, "Out of Stock" state with disabled button
-- **Smart Shopping Cart** — `localStorage` persistence for visitors, API sync for logged-in users; real-time quantity adjustment and price calculation
-- **Single-Page Checkout** — Four-section flow: Identification → Address (auto-fill via ViaCEP) → Order Summary → Payment; atomic stock validation before order creation
-- **Integrated Payment** — Checkout with support for PIX, credit card, and boleto via payment gateway (Mercado Pago or Stripe — TBD)
-- **User Authentication** — JWT-based login/registration, password recovery with time-limited tokens, session management
-- **Order Confirmation** — Success page with order number, payment status, and summary
-- **My Account (SPA)** — Order history with filters, order detail view, editable profile — all without page reloads
-- **Institutional Pages** — About, Contact (WhatsApp CTA), Terms of Service, Privacy Policy
+### Order Processing
+- Order creation with automatic total calculation via Django signals
+- Stock validation — blocks orders when inventory is insufficient
+- Automatic stock deduction on order creation
+- Order status workflow: New → Confirmed → Shipped → Delivered | Cancelled
 
-### 🏢 Admin Dashboard (SPA)
+### REST API
+- Full CRUD endpoints for products, categories, brands, and variations
+- Nested serializers — single request returns product with all variations
+- Query optimization with `select_related` and `prefetch_related`
+- Pagination built-in (10 items per page)
+- Browsable API interface for testing
 
-- **Overview Dashboard** — Cards showing new orders, monthly revenue, low-stock alerts (< 5 units); latest 10 orders table
-- **Product Management** — Full CRUD with JS validation; drag-and-drop image upload (1–5 images) with reordering; per-size stock control (P, M, G, GG); active/inactive toggle; soft delete
-- **Category Management** — Simple CRUD (name + description)
-- **Order Management** — Filterable table by status/date/customer; color-coded status badges; full order detail with customer info, products, address, and WhatsApp button; editable shipping cost; status workflow: `New → Payment Confirmed → Shipped → Delivered | Cancelled`; tracking code field; internal notes; change history timeline
-- **Inventory Control** — Automatic stock deduction on order (atomic transaction with rollback); automatic restoration on cancellation; manual adjustment with full audit log (`admin_id`, `timestamp`, `product_id`, `size`, `before`, `after`)
-- **Store Settings** — Store name, contact info, WhatsApp number, logo upload, social media links
-
-### 🔔 Integrations
-
-- **Payment Gateway** — Automated payment processing (PIX, credit card, boleto) with webhook-based status updates
-- **WhatsApp** — Direct `wa.me/` links for customer support and shipping coordination
-- **Email Notifications** — Order confirmation, payment receipt, shipping updates, and password recovery
-- **ViaCEP** — Automatic address lookup from ZIP code during checkout
+### Admin Dashboard
+- Django Admin customized with inline editing for product variations
+- Bulk stock updates directly from the list view
+- Filters by category, brand, and size
+- Search by product name or brand
 
 ---
 
 ## 🛠 Tech Stack
 
-### Backend
-| Technology | Purpose |
-|---|---|
-| **Python 3.12+** | Core language |
-| **Django 5.x** | Web framework & ORM |
-| **Django REST Framework** | RESTful API layer |
-| **PostgreSQL** | Relational database |
-| **Simple JWT** | Token-based authentication |
-| **Pillow** | Image processing |
-| **Mercado Pago SDK / Stripe** | Payment gateway integration (TBD) |
+| Technology | Version | Purpose |
+|---|---|---|
+| Python | 3.12 | Core language |
+| Django | 6.0 | Web framework & ORM |
+| Django REST Framework | 3.16.1 | RESTful API |
+| SQLite | 3.x | Development database |
 
-### Frontend
-| Technology | Purpose |
-|---|---|
-| **React 18** | UI library |
-| **Vite** | Build tool & dev server |
-| **React Router** | Client-side routing & SPA navigation |
-| **Axios** | HTTP client for API communication |
-| **Tailwind CSS** | Utility-first styling |
-
-### Infrastructure
-| Technology | Purpose |
-|---|---|
-| **Render** | Backend hosting (Django + PostgreSQL) |
-| **Vercel** | Frontend hosting (React SPA) |
-| **GitHub Actions** | CI/CD pipeline |
+**Planned:** PostgreSQL (production), React + Vite (frontend), JWT authentication
 
 ---
 
 ## 🏗 Architecture
 
+**Monolith Modular** — justified by project size (~7 models), single developer, and sufficient performance (~5000 req/sec supported vs ~20 req/sec needed).
+
 ```
-royal-conceito/
-│
+sistema_loja/
 ├── backend/
-│   ├── config/                  # Django project configuration
-│   │   ├── settings/
-│   │   │   ├── base.py          # Shared settings
-│   │   │   ├── dev.py           # Development overrides
-│   │   │   └── prod.py          # Production overrides
-│   │   ├── urls.py              # Root URL configuration
+│   ├── core/                # Django project settings
+│   │   ├── settings.py
+│   │   ├── urls.py          # Root URLs (admin + API includes)
 │   │   └── wsgi.py
 │   │
-│   ├── apps/
-│   │   ├── products/            # Product catalog, categories, images
-│   │   ├── cart/                # Shopping cart logic & sync
-│   │   ├── orders/              # Order creation, status workflow, history
-│   │   ├── payments/            # Gateway integration & webhooks
-│   │   ├── users/               # Auth, registration, password recovery
-│   │   ├── inventory/           # Stock management & audit logs
-│   │   └── store/               # Store settings & configurations
+│   ├── produtos/            # Product catalog app
+│   │   ├── models.py        # Categoria, Marca, Produto, Variacao
+│   │   ├── serializers.py   # 4 serializers (with nested + virtual fields)
+│   │   ├── views.py         # 4 ModelViewSets
+│   │   ├── urls.py          # DefaultRouter
+│   │   └── admin.py         # Customized admin with inlines
+│   │
+│   ├── pedidos/             # Orders app
+│   │   ├── models.py        # Pedido, ItemPedido, Endereco
+│   │   ├── serializers.py   # 3 serializers (nested + SerializerMethodField)
+│   │   ├── views.py         # 3 ModelViewSets
+│   │   ├── urls.py          # DefaultRouter
+│   │   ├── signals.py       # Stock validation, auto-calculations
+│   │   └── admin.py         # Order management
 │   │
 │   ├── manage.py
+│   ├── db.sqlite3
 │   └── requirements.txt
 │
-├── frontend/
-│   ├── src/
-│   │   ├── components/          # Reusable UI components
-│   │   ├── pages/               # Route-level page components
-│   │   │   ├── Home/
-│   │   │   ├── Catalog/
-│   │   │   ├── ProductDetail/
-│   │   │   ├── Cart/
-│   │   │   ├── Checkout/
-│   │   │   ├── Account/
-│   │   │   └── Admin/
-│   │   ├── hooks/               # Custom React hooks
-│   │   ├── services/            # API client (Axios instances)
-│   │   ├── context/             # Auth, Cart providers
-│   │   └── utils/               # Helpers (masks, formatters, validators)
-│   ├── package.json
-│   └── vite.config.js
-│
-├── .gitignore
-├── PROJETO.md
-└── README.md
+└── frontend/                # React (planned)
 ```
 
----
-
-## 🔄 System Flows
-
-### Purchase Flow (Happy Path)
+### Data Flow
 
 ```
-Customer                       Frontend                        Backend                    Gateway
-   │                              │                               │                          │
-   ├─ Browse catalog ────────────►│                               │                          │
-   │                              ├─ GET /products/ ─────────────►│                          │
-   │                              │◄── Product list ──────────────┤                          │
-   ├─ Add to cart ───────────────►│── localStorage / POST /cart/ ─►                          │
-   ├─ Checkout ──────────────────►│                               │                          │
-   │                              ├─ POST /orders/ ──────────────►│                          │
-   │                              │                               ├─ Validate stock          │
-   │                              │                               ├─ Create order (atomic)   │
-   │                              │                               ├─ Deduct stock            │
-   │                              │                               ├─ Create payment ────────►│
-   │                              │◄── Payment URL / Form ────────┤◄── Payment session ──────┤
-   ├─ Complete payment ──────────►│────────────────────────────────│─────────────────────────►│
-   │                              │                               │◄── Webhook: paid ────────┤
-   │                              │                               ├─ Update order status     │
-   │                              │                               ├─ Send confirmation email │
-   │◄── Order confirmed ─────────┤◄── Success page ──────────────┤                          │
-```
-
-### Order Status Lifecycle
-
-```
-  ┌───────┐    ┌───────────────────┐    ┌───────────┐    ┌─────────┐    ┌───────────┐
-  │  New  │───►│ Payment Confirmed │───►│ Processing│───►│ Shipped │───►│ Delivered │
-  └───────┘    └───────────────────┘    └───────────┘    └─────────┘    └───────────┘
-      │                 │                      │
-      └─────────────────┴──────────────────────┘
-                        │
-                  ┌─────▼─────┐
-                  │ Cancelled │  ← Stock restored + refund initiated
-                  └───────────┘
+HTTP Request → DRF Router → ViewSet → Serializer → Model/ORM → Signal → Database
+                                                                           ↓
+HTTP Response ← JSON ← Serializer ← QuerySet ←────────────────────────────┘
 ```
 
 ---
 
 ## 📡 API Endpoints
 
-Documentation available at `/api/docs/` (Swagger UI) when running the backend.
+**Base URL:** `http://localhost:8000/api/`
 
-### Products
+### Products (Implemented ✅)
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/products/` | List products (filters & search) |
-| `GET` | `/api/products/:id/` | Product details with images & stock |
-| `GET` | `/api/categories/` | List all categories |
+| `GET` | `/api/produtos/` | List all products (paginated, with nested variations) |
+| `GET` | `/api/produtos/{id}/` | Product details |
+| `POST` | `/api/produtos/` | Create product |
+| `PUT/PATCH` | `/api/produtos/{id}/` | Update product |
+| `DELETE` | `/api/produtos/{id}/` | Delete product |
+| `GET` | `/api/categorias/` | List categories |
+| `GET` | `/api/marcas/` | List brands |
+| `GET` | `/api/variacoes/` | List all variations |
 
-### Cart
+### Orders (Implemented ✅)
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/cart/` | Get user's cart |
-| `POST` | `/api/cart/items/` | Add item to cart |
-| `PATCH` | `/api/cart/items/:id/` | Update quantity |
-| `DELETE` | `/api/cart/items/:id/` | Remove item |
+| `GET` | `/api/pedidos/` | List orders (with nested items) |
+| `GET` | `/api/pedidos/{id}/` | Order details |
+| `GET` | `/api/enderecos/` | List addresses |
+| `GET` | `/api/itens/` | List order items |
 
-### Orders & Payments
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/api/orders/` | Create order (with stock validation) |
-| `GET` | `/api/orders/` | List user's orders |
-| `GET` | `/api/orders/:id/` | Order details + payment status |
-| `POST` | `/api/payments/create/` | Initialize payment session |
-| `POST` | `/api/payments/webhook/` | Gateway webhook (status updates) |
+### Example Response — `GET /api/produtos/`
 
-### Authentication
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/api/auth/register/` | User registration |
-| `POST` | `/api/auth/login/` | Login (returns JWT) |
-| `POST` | `/api/auth/token/refresh/` | Refresh JWT token |
-| `POST` | `/api/auth/password-reset/` | Request password reset |
-| `POST` | `/api/auth/password-reset/confirm/` | Confirm reset with token |
+```json
+{
+  "count": 16,
+  "next": "http://127.0.0.1:8000/api/produtos/?page=2",
+  "results": [
+    {
+      "id": 5,
+      "nome": "CONJUNTO LACOSTE 2026",
+      "preco": "179.99",
+      "marca": 9,
+      "marca_nome": "Lacoste",
+      "categoria": 10,
+      "categoria_nome": "Conjuntos Grifes",
+      "variacoes": [
+        {"id": 31, "tamanho": "S", "estoque": 10},
+        {"id": 32, "tamanho": "M", "estoque": 10},
+        {"id": 33, "tamanho": "L", "estoque": 10}
+      ]
+    }
+  ]
+}
+```
 
-### Admin
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/admin/dashboard/` | Dashboard metrics |
-| `POST` | `/api/admin/products/` | Create product |
-| `PUT` | `/api/admin/products/:id/` | Update product |
-| `DELETE` | `/api/admin/products/:id/` | Soft delete product |
-| `PATCH` | `/api/admin/orders/:id/status/` | Update order status |
-| `PATCH` | `/api/admin/orders/:id/shipping/` | Add tracking code & shipping cost |
-| `GET` | `/api/admin/inventory/logs/` | Stock change audit log |
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Python 3.12+
+- pip
+- Git
+
+### Installation
+
+```bash
+# Clone
+git clone https://github.com/renatorms/royal-conceito.git
+cd royal-conceito/backend
+
+# Virtual environment
+python -m venv .venv
+source .venv/bin/activate  # Linux/Mac
+
+# Dependencies
+pip install -r requirements.txt
+
+# Database
+python manage.py migrate
+
+# Create admin user
+python manage.py createsuperuser
+
+# Run
+python manage.py runserver
+```
+
+**Access:**
+- Admin: http://127.0.0.1:8000/admin/
+- API: http://127.0.0.1:8000/api/
 
 ---
 
 ## 🗺 Roadmap
 
-### Phase 1 — Foundation ✅
-- [x] Project structure & initial setup
-- [x] Product data modeling
+### Phase 1 — Backend MVP ✅
+- [x] Data models (Products + Orders)
+- [x] Django signals (stock validation, automatic calculations)
+- [x] Customized Django Admin
+- [x] Database migrations
 
-### Phase 2 — Backend Core (API)
-- [ ] Django project config (dev/prod split settings)
-- [ ] Product & Category models + CRUD endpoints
-- [ ] User authentication (JWT + password recovery flow)
-- [ ] Shopping cart API (sync for logged-in users)
-- [ ] Order creation with atomic stock management
-- [ ] Payment gateway integration (webhooks + status sync)
-- [ ] Admin endpoints (dashboard metrics, order workflow)
-- [ ] Email notifications (order, payment, shipping)
-- [ ] Inventory audit logging system
+### Phase 2 — REST API (In Progress)
+- [x] Product serializers (nested, virtual fields)
+- [x] Product ViewSets + Router
+- [x] Order serializers (nested, SerializerMethodField)
+- [x] Order ViewSets + Router
+- [ ] Endpoint testing with Postman
+- [ ] Filters and search
 
-### Phase 3 — Frontend (React + Vite)
-- [ ] Home page with dynamic product grid
-- [ ] Product catalog with filters & debounced search
-- [ ] Product detail page (gallery, size selector, stock check)
-- [ ] Shopping cart (localStorage + API sync)
-- [ ] Checkout flow with integrated payment
-- [ ] Auth pages (login, register, password recovery)
-- [ ] My Account area (orders, payment history, profile)
-- [ ] Admin Dashboard SPA
-- [ ] Responsive mobile-first design
+### Phase 3 — JWT Authentication
+- [ ] djangorestframework-simplejwt setup
+- [ ] Login/register endpoints
+- [ ] Protected endpoints
 
-### Phase 4 — Deploy & Polish
-- [ ] Backend on Render + PostgreSQL
-- [ ] Frontend on Vercel
-- [ ] Environment variables & secrets
-- [ ] Webhook configuration (payment gateway → backend)
-- [ ] Performance optimization & testing
+### Phase 4 — Frontend (React)
+- [ ] Vite + React setup
+- [ ] Product catalog UI
+- [ ] Shopping cart
+- [ ] Checkout flow
+- [ ] Responsive design (mobile-first)
 
-### Phase 5 — Future Enhancements (v2.0)
-- [ ] Abandoned cart email recovery
-- [ ] "Notify me when available" for out-of-stock products
-- [ ] Product reviews & ratings
-- [ ] Discount coupons & promotions system
-- [ ] Advanced analytics dashboard
-- [ ] httpOnly cookie authentication (security upgrade)
+### Phase 5 — Deploy
+- [ ] SQLite → PostgreSQL migration
+- [ ] Backend deploy (Railway/Render)
+- [ ] Frontend deploy (Vercel)
+- [ ] Domain + SSL
 
 ---
 
-## 👥 Team
+## 👤 Developer
 
-| | Name | GitHub | Role |
-|---|---|---|---|
-| 👤 | **Renato Ramos Machado** | [@renatorms](https://github.com/renatorms) | Full-Stack Developer |
-| 👤 | *To be added* | — | Full-Stack Developer |
+| Name | Role | GitHub |
+|---|---|---|
+| **Renato Ramos Machado** | Backend Developer | [@renatorms](https://github.com/renatorms) |
+
+Computer Engineering Student — UFSM (7th semester)
 
 ---
 
 ## 📄 License
 
-This project is proprietary software developed for **Royal Conceito**. All rights reserved.
+Proprietary software developed for **Royal Conceito**. All rights reserved.
 
 ---
 
