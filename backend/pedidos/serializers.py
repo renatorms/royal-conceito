@@ -35,3 +35,4 @@ class PedidoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Pedido
         fields = ["id", "cliente", "itens", "data_pedido", "total", "status"]
+        read_only_fields = ["total"]
