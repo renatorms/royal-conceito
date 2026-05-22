@@ -29,3 +29,6 @@ class ProdutoViewSet(viewsets.ModelViewSet):
         "variacoes"
     )
     serializer_class = ProdutoSerializer
+    filterset_fields = ["marca", "categoria"]
+    search_fields = ["nome", "marca__nome"]
+    ordering_fields = ["nome", "preco"]
