@@ -21,6 +21,8 @@ class ItemPedidoSerializer(serializers.ModelSerializer):
         model = ItemPedido
         fields = [
             "id",
+            "pedido",
+            "variacao",
             "produto_nome",
             "produto_tamanho",
             "quantidade",
