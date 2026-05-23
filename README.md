@@ -362,8 +362,8 @@ python manage.py runserver
 - [x] Product ViewSets + Router
 - [x] Order serializers (nested, SerializerMethodField)
 - [x] Order ViewSets + Router
-- [ ] Endpoint testing with Postman
-- [ ] Filters and search
+- [x] Endpoint testing 
+- [x] Filters and search
 
 ### Phase 3 — JWT Authentication
 - [ ] djangorestframework-simplejwt setup
