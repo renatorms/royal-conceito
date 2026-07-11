@@ -40,8 +40,9 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "corsheaders",
     "django_filters",
-    "produtos",  # app de produtos
-    "pedidos",  # app de pedidos
+    "produtos",
+    "pedidos",
+    "usuarios",
 ]
 
 MIDDLEWARE = [
@@ -127,7 +128,7 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.AllowAny",  # por enquanto
+        "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
