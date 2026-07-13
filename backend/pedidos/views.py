@@ -26,3 +26,6 @@ class PedidoViewSet(viewsets.ModelViewSet):
         if user.is_staff:
             return Pedido.objects.all()
         return Pedido.objects.filter(usuario=user)
+
+    def perform_create(self, serializer):
+        serializer.save(usuario=self.request.user)
