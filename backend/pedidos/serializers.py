@@ -12,10 +12,6 @@ class EnderecoSerializer(serializers.ModelSerializer):
 class ItemPedidoSerializer(serializers.ModelSerializer):
     produto_nome = serializers.CharField(source="variacao.produto.nome", read_only=True)
     produto_tamanho = serializers.CharField(source="variacao.tamanho", read_only=True)
-    produto_subtotal = serializers.SerializerMethodField()
-
-    def get_produto_subtotal(self, obj):
-        return obj.quantidade * obj.preco_unitario
 
     class Meta:
         model = ItemPedido
@@ -27,8 +23,9 @@ class ItemPedidoSerializer(serializers.ModelSerializer):
             "produto_tamanho",
             "quantidade",
             "preco_unitario",
-            "produto_subtotal",
+            "subtotal",
         ]
+        read_only_fields = ["subtotal"]
 
 
 class PedidoSerializer(serializers.ModelSerializer):

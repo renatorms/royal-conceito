@@ -1,7 +1,12 @@
-from django.db.models.signals import post_delete, post_save
+from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
 from .models import ItemPedido
+
+
+@receiver(pre_save, sender=ItemPedido)
+def calcula_subtotal(sender, instance, **kwargs):
+    instance.subtotal = instance.quantidade * instance.preco_unitario
 
 
 @receiver(post_save, sender=ItemPedido)
@@ -26,7 +31,7 @@ def atualiza_total_pedido(
 ):  # recalcula total de pedido automaticamente
     pedido = instance.pedido
     itens = pedido.itens.all()
-    total = sum(item.quantidade * item.preco_unitario for item in itens)
+    total = sum(item.subtotal for item in itens)
     pedido.total = total
     pedido.save()
 
@@ -35,5 +40,5 @@ def atualiza_total_pedido(
 def atualiza_total_ao_deletar(sender, instance, **kwargs):
     pedido = instance.pedido
     itens = pedido.itens.all()
-    pedido.total = sum(item.quantidade * item.preco_unitario for item in itens)
+    pedido.total = sum(item.subtotal for item in itens)
     pedido.save()

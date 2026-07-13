@@ -36,6 +36,7 @@ class ItemPedido(models.Model):
     # PROTECT: não deixa deletar variação se foi vendida
     quantidade = models.IntegerField()
     preco_unitario = models.DecimalField(max_digits=10, decimal_places=2)
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     def __str__(self):
         return f"{self.quantidade}x - {self.variacao} - (Pedido #{self.pedido.id})"
