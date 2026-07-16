@@ -54,29 +54,39 @@ All API endpoints use DRF's `DefaultRouter` with `ModelViewSet`. Each app regist
 - **Produto** → has many **Variacao** (size variants with stock tracking, CASCADE)
 - **Produto** → belongs to **Marca** and **Categoria** (both SET_NULL)
 - **Pedido** → has many **ItemPedido** (CASCADE), belongs to **User** via `usuario` FK (PROTECT — can't delete a user with existing orders)
-- **ItemPedido** → references **Variacao** (PROTECT — can't delete sold variants)
+- **ItemPedido** → references **Variacao** (PROTECT — can't delete sold variants); `subtotal` is persisted on the model (not computed on the fly)
 - **Variacao** has `unique_together = ["produto", "tamanho"]`
+- **Endereco** → belongs to **User** via `usuario` FK (CASCADE — deleting a user deletes their addresses)
 
 ### Business Logic via Signals
 
-`pedidos/signals.py` contains three `post_save`/`post_delete` signals registered in `pedidos/apps.py`:
+`pedidos/signals.py` contains one `pre_save` and three `post_save`/`post_delete` signals registered in `pedidos/apps.py`, all wrapped in `@transaction.atomic`:
 
-1. **diminui_estoque** — On ItemPedido creation: validates stock availability, decrements Variacao.estoque. Raises `ValueError` on insufficient stock.
-2. **atualiza_total_pedido** — On ItemPedido save: recalculates Pedido.total as sum of (quantidade × preco_unitario).
-3. **atualiza_total_ao_deletar** — On ItemPedido delete: recalculates Pedido.total.
+1. **calcula_subtotal** (`pre_save`) — On ItemPedido save: sets `subtotal = quantidade × preco_unitario` before it's persisted.
+2. **diminui_estoque** (`post_save`) — On ItemPedido creation: validates stock availability, decrements Variacao.estoque. Raises `ValueError` on insufficient stock.
+3. **atualiza_total_pedido** (`post_save`) — On ItemPedido save: recalculates Pedido.total as sum of ItemPedido.subtotal.
+4. **atualiza_total_ao_deletar** (`post_delete`) — On ItemPedido delete: recalculates Pedido.total.
 
 ### Authentication
 
 - JWT via `djangorestframework-simplejwt`
 - Default permission: `IsAuthenticated` (all endpoints require token)
 - `produtos` ViewSets (Categoria, Marca, Produto, Variacao) use `IsAuthenticatedOrReadOnly` — reads are public, writes require auth
-- `PedidoViewSet` uses `IsAuthenticated` + `IsDonorOrStaff` (`pedidos/permissions.py`) and filters `get_queryset()` so non-staff users only see their own orders (staff see all)
+- `PedidoViewSet` uses `IsAuthenticated` + `IsDonorOrStaff` (`pedidos/permissions.py`) and filters `get_queryset()` so non-staff users only see their own orders (staff see all); `perform_create()` auto-assigns `usuario` from `request.user`, so clients never submit it
 - `/api/registro/` uses `AllowAny`
 - Token endpoints: `POST /api/token/` (obtain), `POST /api/token/refresh/` (refresh)
 
 ### Query Optimization
 
 `ProdutoViewSet` uses `select_related("marca", "categoria").prefetch_related("variacoes")` to avoid N+1 queries. Supports `filterset_fields`, `search_fields` (nome, marca__nome), and `ordering_fields` (nome, preco).
+
+### Django Admin
+
+`pedidos/admin.py` customizes the admin for order management:
+
+- **PedidoAdmin** — `list_display` (id, usuario, status, total, data_pedido), `list_filter` (status, data_pedido), `search_fields` (usuario__username), with an `ItemPedidoInline` to view/edit order items directly on the order page
+- **ItemPedidoAdmin** — `list_display` (pedido, variacao, quantidade, preco_unitario, subtotal), `list_filter` (pedido__status)
+- **EnderecoAdmin** — `list_display` (usuario, rua, cidade, estado)
 
 ## API Endpoints
 
@@ -102,8 +112,9 @@ All API endpoints use DRF's `DefaultRouter` with `ModelViewSet`. Each app regist
 
 ## Development Status
 
-- Phase 1 (Backend MVP): Complete
-- Phase 2 (REST API): Complete
-- Phase 3 (JWT Auth): Complete
+- Backend: 100% complete
+  - Phase 1 (Backend MVP): Complete
+  - Phase 2 (REST API): Complete
+  - Phase 3 (JWT Auth): Complete
 - Phase 4 (React Frontend): Planned
 - Phase 5 (Deploy + PostgreSQL): Planned
