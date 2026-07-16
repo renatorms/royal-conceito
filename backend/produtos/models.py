@@ -30,7 +30,7 @@ class Produto(models.Model):
         Marca, on_delete=models.SET_NULL, null=True, blank=True, related_name="produtos"
     )
     categoria = models.ForeignKey(
-        Categoria, on_delete=models.SET_NULL, null=True, blank=True
+        Categoria, on_delete=models.SET_NULL, null=True, blank=True, related_name="produtos"
     )
     # SET_NULL: deletar categoria não remove o produto do sistema
 
