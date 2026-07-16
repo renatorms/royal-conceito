@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
@@ -10,6 +11,7 @@ def calcula_subtotal(sender, instance, **kwargs):
 
 
 @receiver(post_save, sender=ItemPedido)
+@transaction.atomic
 def diminui_estoque(sender, instance, created, **kwargs):
     if created:
         variacao = instance.variacao
@@ -26,6 +28,7 @@ def diminui_estoque(sender, instance, created, **kwargs):
 
 
 @receiver(post_save, sender=ItemPedido)
+@transaction.atomic
 def atualiza_total_pedido(
     sender, instance, **kwargs
 ):  # recalcula total de pedido automaticamente
@@ -37,6 +40,7 @@ def atualiza_total_pedido(
 
 
 @receiver(post_delete, sender=ItemPedido)
+@transaction.atomic
 def atualiza_total_ao_deletar(sender, instance, **kwargs):
     pedido = instance.pedido
     itens = pedido.itens.all()
