@@ -24,4 +24,4 @@ class ItemPedidoAdmin(admin.ModelAdmin):
 
 @admin.register(Endereco)
 class EnderecoAdmin(admin.ModelAdmin):
-    list_display = ["user", "rua", "cidade", "estado"]
+    list_display = ["usuario", "rua", "cidade", "estado"]

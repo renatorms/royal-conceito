@@ -43,7 +43,7 @@ class ItemPedido(models.Model):
 
 
 class Endereco(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE)
     # CASCADE: se deletar usuário, deleta endereços
     rua = models.CharField(max_length=100)
     numero = models.IntegerField()
