@@ -25,7 +25,7 @@ class ItemPedidoSerializer(serializers.ModelSerializer):
             "preco_unitario",
             "subtotal",
         ]
-        read_only_fields = ["subtotal"]
+        read_only_fields = ["subtotal", "preco_unitario"]
 
 
 class PedidoSerializer(serializers.ModelSerializer):
