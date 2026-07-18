@@ -11,6 +11,8 @@
 
 **Backend for a real e-commerce platform, built for a brick-and-mortar fashion store expanding into online sales.**
 
+**Backend status: 100% complete and validated** — Phases 1, 2 and 3 finished.
+
 [About](#-about) · [Features](#-features) · [Tech Stack](#-tech-stack) · [Architecture](#-architecture) · [API Endpoints](#-api-endpoints) · [Getting Started](#-getting-started) · [Roadmap](#-roadmap)
 
 </div>
@@ -39,6 +41,16 @@ This project is the backend for their e-commerce platform — a REST API built w
 - Stock validation — blocks orders when inventory is insufficient
 - Automatic stock deduction on order creation
 - Order status workflow: New → Confirmed → Shipped → Delivered | Cancelled
+- `subtotal` persisted on `ItemPedido` (calculated on save, not computed on the fly)
+- All order signals wrapped in atomic transactions to guarantee data consistency
+
+### Authentication & Authorization
+- JWT authentication via `djangorestframework-simplejwt` (`/api/token/`, `/api/token/refresh/`)
+- `IsAuthenticated` enforced globally by default across the API
+- `IsAuthenticatedOrReadOnly` on product endpoints — public reads, authenticated writes
+- `Pedido.usuario` uses `PROTECT` — a user with existing orders can't be deleted
+- Custom `IsDonorOrStaff` permission — non-staff users only see/manage their own orders, staff see all
+- `perform_create()` auto-assigns `usuario` from the authenticated request — clients never submit it
 
 ### REST API
 - Full CRUD endpoints for products, categories, brands, variations, orders, and addresses
@@ -66,9 +78,10 @@ This project is the backend for their e-commerce platform — a REST API built w
 | Django | 6.0 | Web framework & ORM |
 | Django REST Framework | 3.16.1 | RESTful API |
 | django-filter | 25.2 | Query filtering |
+| djangorestframework-simplejwt | latest | JWT authentication |
 | SQLite | 3.x | Development database |
 
-**Planned:** PostgreSQL (production), React + Vite (frontend), JWT authentication
+**Planned:** PostgreSQL (production), React + Vite (frontend)
 
 ---
 
@@ -230,12 +243,18 @@ python manage.py runserver
 - [x] Endpoint testing
 - [x] Filters, search and ordering
 
-### Phase 3 — JWT Authentication (In Progress)
+### Phase 3 — JWT Authentication ✅
 - [x] djangorestframework-simplejwt installed and configured
-- [ ] Login/register endpoints
-- [ ] Protected endpoints (IsAuthenticated)
+- [x] Login/register endpoints (`/api/registro/`, `/api/token/`, `/api/token/refresh/`)
+- [x] Protected endpoints (`IsAuthenticated` enforced globally by default)
+- [x] `IsAuthenticatedOrReadOnly` on product endpoints
+- [x] `Pedido.usuario` field with `PROTECT` to prevent deleting users with orders
+- [x] Custom `IsDonorOrStaff` permission for order ownership
+- [x] `perform_create()` auto-assigns `usuario` from the authenticated request
+- [x] `subtotal` persisted on `ItemPedido`
+- [x] Atomic transactions on all order signals
 
-### Phase 4 — Frontend (React)
+### Phase 4 — Frontend (React) — Next Up
 - [ ] Vite + React setup
 - [ ] Product catalog UI
 - [ ] Shopping cart
