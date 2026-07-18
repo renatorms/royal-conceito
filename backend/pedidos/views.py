@@ -1,4 +1,5 @@
 from rest_framework import viewsets
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 
 from .models import Endereco, ItemPedido, Pedido
@@ -17,6 +18,9 @@ class EnderecoViewSet(viewsets.ModelViewSet):
             return Endereco.objects.all()
         return Endereco.objects.filter(usuario=user)
 
+    def perform_create(self, serializer):
+        serializer.save(usuario=self.request.user)
+
 
 class ItemPedidoViewSet(viewsets.ModelViewSet):
     queryset = ItemPedido.objects.all()
@@ -30,6 +34,11 @@ class ItemPedidoViewSet(viewsets.ModelViewSet):
         return ItemPedido.objects.filter(pedido__usuario=user)
 
     def perform_create(self, serializer):
+        user = self.request.user
+        pedido = serializer.validated_data["pedido"]
+        if not user.is_staff and pedido.usuario != user:
+            raise PermissionDenied("Você não pode adicionar itens a um pedido que não é seu.")
+
         variacao = serializer.validated_data["variacao"]
         serializer.save(preco_unitario=variacao.produto.preco)
 
