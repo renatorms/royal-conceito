@@ -7,3 +7,4 @@ from .serializers import RegisterSerializer
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
+    throttle_scope = "registro"
