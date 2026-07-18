@@ -125,8 +125,10 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 
-# Configuração do CORS para o desenvolvimento
-CORS_ALLOW_ALL_ORIGINS = True
+# CORS: em dev (DEBUG=True) libera todas as origens por conveniência;
+# em produção, só as origens explicitadas em CORS_ALLOWED_ORIGINS são aceitas.
+CORS_ALLOW_ALL_ORIGINS = DEBUG
+CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="", cast=Csv())
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
