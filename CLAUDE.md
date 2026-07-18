@@ -67,14 +67,27 @@ All API endpoints use DRF's `DefaultRouter` with `ModelViewSet`. Each app regist
 3. **atualiza_total_pedido** (`post_save`) — On ItemPedido save: recalculates Pedido.total as sum of ItemPedido.subtotal.
 4. **atualiza_total_ao_deletar** (`post_delete`) — On ItemPedido delete: recalculates Pedido.total.
 
-### Authentication
+### Authentication & Authorization
 
 - JWT via `djangorestframework-simplejwt`
 - Default permission: `IsAuthenticated` (all endpoints require token)
-- `produtos` ViewSets (Categoria, Marca, Produto, Variacao) use `IsAuthenticatedOrReadOnly` — reads are public, writes require auth
+- `produtos` ViewSets (Categoria, Marca, Produto, Variacao) use `IsAdminOrReadOnly` (`produtos/permissions.py`) — reads are public, writes require `request.user.is_staff`
 - `PedidoViewSet` uses `IsAuthenticated` + `IsDonorOrStaff` (`pedidos/permissions.py`) and filters `get_queryset()` so non-staff users only see their own orders (staff see all); `perform_create()` auto-assigns `usuario` from `request.user`, so clients never submit it
+- `EnderecoViewSet` uses `IsAuthenticated` + `IsDonorOrStaff`, filters `get_queryset()` by `usuario=request.user` (staff see all), and `perform_create()` forces `usuario=request.user` — closes an IDOR that let any authenticated user read/edit/delete another user's address
+- `ItemPedidoViewSet` uses `IsAuthenticated` + `IsItemDonorOrStaff` (`pedidos/permissions.py`), filters `get_queryset()` by `pedido__usuario=request.user` (staff see all); `perform_create()` raises `PermissionDenied` (403) if a non-staff user targets a `Pedido` they don't own, and always sets `preco_unitario` server-side from `variacao.produto.preco` — the field is `read_only` on `ItemPedidoSerializer`, so clients can't forge a price or attach items to someone else's order
 - `/api/registro/` uses `AllowAny`
-- Token endpoints: `POST /api/token/` (obtain), `POST /api/token/refresh/` (refresh)
+- Token endpoints: `POST /api/token/` (obtain, throttled), `POST /api/token/refresh/` (refresh)
+
+### Rate Limiting
+
+- `DEFAULT_THROTTLE_CLASSES` = `ScopedRateThrottle`; only views with a `throttle_scope` attribute are throttled, so the rest of the API is unaffected
+- `/api/token/` (`core/views.py::ThrottledTokenObtainPairView`, `throttle_scope = "login"`) and `/api/registro/` (`throttle_scope = "registro"`) are limited to 5 requests/min per client via `DEFAULT_THROTTLE_RATES` in `core/settings.py`
+
+### Environment Variables
+
+- `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, and `CORS_ALLOWED_ORIGINS` are loaded via `python-decouple` (`core/settings.py`) instead of being hardcoded
+- Local values live in `backend/.env` (gitignored); `backend/.env.example` documents the expected variables
+- `CORS_ALLOW_ALL_ORIGINS` is tied to `DEBUG` — all origins allowed only in dev; in production only origins listed in `CORS_ALLOWED_ORIGINS` are accepted
 
 ### Query Optimization
 
@@ -108,7 +121,8 @@ All API endpoints use DRF's `DefaultRouter` with `ModelViewSet`. Each app regist
 - Pagination: `PageNumberPagination`, 10 items per page
 - Filter backends: `DjangoFilterBackend`, `SearchFilter`, `OrderingFilter`
 - Auth: `JWTAuthentication`
-- CORS: all origins allowed (dev only)
+- Throttling: `ScopedRateThrottle`, applied only to `/api/token/` and `/api/registro/` (5/min each)
+- CORS: all origins allowed only when `DEBUG=True`; restricted to `CORS_ALLOWED_ORIGINS` in production
 
 ## Development Status
 
