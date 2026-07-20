@@ -69,14 +69,19 @@ All API endpoints use DRF's `DefaultRouter` with `ModelViewSet`. Each app regist
 
 ### Authentication & Authorization
 
-- JWT via `djangorestframework-simplejwt`
-- Default permission: `IsAuthenticated` (all endpoints require token)
+- JWT via `djangorestframework-simplejwt`, delivered as **httpOnly cookies** rather than `Authorization: Bearer` headers
+  - `core/views.py::ThrottledTokenObtainPairView` (`POST /api/token/`, throttled `throttle_scope = "login"`) sets `access_token` (`Path=/`) and `refresh_token` (`Path=/api/token/refresh/`) cookies from the simplejwt response and strips them out of the JSON body; it also calls `get_token(request)` so a readable `csrftoken` cookie is issued at login
+  - `core/views.py::CookieTokenRefreshView` (`POST /api/token/refresh/`) reads `refresh_token` from `request.COOKIES`, builds simplejwt's serializer directly via `self.get_serializer(data={"refresh": refresh_token})` (avoiding the private `request._full_data` attribute), and re-sets the rotated cookies from `serializer.validated_data`
+  - `core/views.py::LogoutView` (`POST /api/logout/`, `IsAuthenticated`) clears both cookies via `response.delete_cookie()` using matching paths
+  - `core/authentication.py::CookieJWTAuthentication` (registered as the sole `DEFAULT_AUTHENTICATION_CLASSES`) reads the JWT from `request.COOKIES.get("access_token")` instead of the `Authorization` header, and enforces CSRF (mirroring DRF's `SessionAuthentication.enforce_csrf`) on every authenticated request — the browser sends the JWT cookie automatically, so all state-changing requests (checkout, order creation, admin writes, logout) require a valid `X-CSRFToken` header matching the `csrftoken` cookie
+  - Cookies use `secure=not settings.DEBUG` and `samesite="Lax"`; `CORS_ALLOW_CREDENTIALS = True` and `CSRF_TRUSTED_ORIGINS` (env var, defaults to `http://localhost:5173`) are required for the cross-origin Vite frontend to send/receive them
+- Default permission: `IsAuthenticated` (all endpoints require the cookie-based token)
 - `produtos` ViewSets (Categoria, Marca, Produto, Variacao) use `IsAdminOrReadOnly` (`produtos/permissions.py`) — reads are public, writes require `request.user.is_staff`
 - `PedidoViewSet` uses `IsAuthenticated` + `IsDonorOrStaff` (`pedidos/permissions.py`) and filters `get_queryset()` so non-staff users only see their own orders (staff see all); `perform_create()` auto-assigns `usuario` from `request.user`, so clients never submit it
 - `EnderecoViewSet` uses `IsAuthenticated` + `IsDonorOrStaff`, filters `get_queryset()` by `usuario=request.user` (staff see all), and `perform_create()` forces `usuario=request.user` — closes an IDOR that let any authenticated user read/edit/delete another user's address
 - `ItemPedidoViewSet` uses `IsAuthenticated` + `IsItemDonorOrStaff` (`pedidos/permissions.py`), filters `get_queryset()` by `pedido__usuario=request.user` (staff see all); `perform_create()` raises `PermissionDenied` (403) if a non-staff user targets a `Pedido` they don't own, and always sets `preco_unitario` server-side from `variacao.produto.preco` — the field is `read_only` on `ItemPedidoSerializer`, so clients can't forge a price or attach items to someone else's order
 - `/api/registro/` uses `AllowAny`
-- Token endpoints: `POST /api/token/` (obtain, throttled), `POST /api/token/refresh/` (refresh)
+- Token endpoints: `POST /api/token/` (obtain, throttled), `POST /api/token/refresh/` (refresh), `POST /api/logout/` (clears cookies, requires auth)
 
 ### Rate Limiting
 
@@ -113,16 +118,17 @@ All API endpoints use DRF's `DefaultRouter` with `ModelViewSet`. Each app regist
 | `/api/itens/` | pedidos | CRUD order items (triggers stock signals) |
 | `/api/enderecos/` | pedidos | CRUD addresses |
 | `/api/registro/` | usuarios | User registration |
-| `/api/token/` | core | JWT obtain |
-| `/api/token/refresh/` | core | JWT refresh |
+| `/api/token/` | core | JWT obtain (sets httpOnly cookies) |
+| `/api/token/refresh/` | core | JWT refresh (reads/sets httpOnly cookies) |
+| `/api/logout/` | core | Clears JWT cookies |
 
 ## DRF Configuration
 
 - Pagination: `PageNumberPagination`, 10 items per page
 - Filter backends: `DjangoFilterBackend`, `SearchFilter`, `OrderingFilter`
-- Auth: `JWTAuthentication`
+- Auth: `core.authentication.CookieJWTAuthentication` (JWT read from the `access_token` cookie, not the `Authorization` header; enforces CSRF on authenticated requests)
 - Throttling: `ScopedRateThrottle`, applied only to `/api/token/` and `/api/registro/` (5/min each)
-- CORS: all origins allowed only when `DEBUG=True`; restricted to `CORS_ALLOWED_ORIGINS` in production
+- CORS: all origins allowed only when `DEBUG=True`; restricted to `CORS_ALLOWED_ORIGINS` in production; `CORS_ALLOW_CREDENTIALS = True` so the frontend can send/receive the auth cookies cross-origin
 
 ## Development Status
 
