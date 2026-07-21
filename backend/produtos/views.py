@@ -29,8 +29,10 @@ class VariacaoViewSet(viewsets.ModelViewSet):
 
 
 class ProdutoViewSet(viewsets.ModelViewSet):
-    queryset = Produto.objects.select_related("marca", "categoria").prefetch_related(
-        "variacoes"
+    queryset = (
+        Produto.objects.select_related("marca", "categoria")
+        .prefetch_related("variacoes")
+        .order_by("nome")
     )
     serializer_class = ProdutoSerializer
     permission_classes = [IsAdminOrReadOnly]
