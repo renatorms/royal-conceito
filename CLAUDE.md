@@ -97,7 +97,7 @@ All API endpoints use DRF's `DefaultRouter` with `ModelViewSet`. Each app regist
 
 ### Query Optimization
 
-`ProdutoViewSet` uses `select_related("marca", "categoria").prefetch_related("variacoes")` to avoid N+1 queries. Supports `filterset_fields`, `search_fields` (nome, marca__nome), and `ordering_fields` (nome, preco).
+`ProdutoViewSet` uses `select_related("marca", "categoria").prefetch_related("variacoes")` to avoid N+1 queries, with a default `order_by("nome")` so pagination is always deterministic (avoids `UnorderedObjectListWarning`); clients can still override via the `ordering` query param (`ordering_fields`: nome, preco). Supports `filterset_fields`, `search_fields` (nome, marca__nome).
 
 ### Django Admin
 
