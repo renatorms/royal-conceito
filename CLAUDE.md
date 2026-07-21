@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Royal Conceito — an e-commerce backend for a clothing store, built with Django 6 + Django REST Framework. Brazilian Portuguese is used for model/field names and UI. The frontend (React/Vite) is planned but not yet implemented.
+Royal Conceito — an e-commerce backend for a clothing store, built with Django 6 + Django REST Framework. Brazilian Portuguese is used for model/field names and UI. The frontend (React/Vite) is under active development (Phase 4) in `frontend/`.
 
 ## Common Commands
 
@@ -81,6 +81,7 @@ All API endpoints use DRF's `DefaultRouter` with `ModelViewSet`. Each app regist
 - `EnderecoViewSet` uses `IsAuthenticated` + `IsDonorOrStaff`, filters `get_queryset()` by `usuario=request.user` (staff see all), and `perform_create()` forces `usuario=request.user` — closes an IDOR that let any authenticated user read/edit/delete another user's address
 - `ItemPedidoViewSet` uses `IsAuthenticated` + `IsItemDonorOrStaff` (`pedidos/permissions.py`), filters `get_queryset()` by `pedido__usuario=request.user` (staff see all); `perform_create()` raises `PermissionDenied` (403) if a non-staff user targets a `Pedido` they don't own, and always sets `preco_unitario` server-side from `variacao.produto.preco` — the field is `read_only` on `ItemPedidoSerializer`, so clients can't forge a price or attach items to someone else's order
 - `/api/registro/` uses `AllowAny`
+- `usuarios/views.py::MeView` (`GET /api/me/`, `IsAuthenticated`) returns the current user via `MeSerializer` (id, username, email, is_staff) — used by the frontend to hydrate/validate the session on load and after login
 - Token endpoints: `POST /api/token/` (obtain, throttled), `POST /api/token/refresh/` (refresh), `POST /api/logout/` (clears cookies, requires auth)
 
 ### Rate Limiting
@@ -118,6 +119,7 @@ All API endpoints use DRF's `DefaultRouter` with `ModelViewSet`. Each app regist
 | `/api/itens/` | pedidos | CRUD order items (triggers stock signals) |
 | `/api/enderecos/` | pedidos | CRUD addresses |
 | `/api/registro/` | usuarios | User registration |
+| `/api/me/` | usuarios | Current authenticated user (id, username, email, is_staff) |
 | `/api/token/` | core | JWT obtain (sets httpOnly cookies) |
 | `/api/token/refresh/` | core | JWT refresh (reads/sets httpOnly cookies) |
 | `/api/logout/` | core | Clears JWT cookies |
@@ -130,11 +132,29 @@ All API endpoints use DRF's `DefaultRouter` with `ModelViewSet`. Each app regist
 - Throttling: `ScopedRateThrottle`, applied only to `/api/token/` and `/api/registro/` (5/min each)
 - CORS: all origins allowed only when `DEBUG=True`; restricted to `CORS_ALLOWED_ORIGINS` in production; `CORS_ALLOW_CREDENTIALS = True` so the frontend can send/receive the auth cookies cross-origin
 
+## Frontend (`frontend/`)
+
+React 19 + Vite + Tailwind + shadcn/ui, using `react-router-dom` for routing.
+
+- **`src/lib/axios.js`** — shared Axios instance (`api`), `baseURL` from `VITE_API_URL` (defaults to `http://localhost:8000/api`), `withCredentials: true` so the httpOnly JWT/CSRF cookies flow cross-origin
+  - Request interceptor attaches `X-CSRFToken` (read from the `csrftoken` cookie) on state-changing methods (`post`, `put`, `patch`, `delete`), matching the backend's CSRF enforcement
+  - Response interceptor catches a `401`, calls `POST /token/refresh/` once (deduped via a module-level `isRefreshing`/`refreshPromise` pair so concurrent 401s share a single refresh call), then retries the original request; requests already flagged `_retry`, or the refresh call itself, are not retried again to avoid loops
+- **`src/contexts/AuthContext.jsx`** — `AuthProvider` + `useAuth()` hook; on mount calls `GET /me/` to hydrate `user` (`isLoading` covers this initial check); exposes `login(username, password)` (`POST /token/`, then `GET /me/`), `register(dados)` (`POST /registro/`), and `logout()` (`POST /logout/`, always clears local `user`); `isAuthenticated` is derived as `!!user`
+- **`src/components/PrivateRoute.jsx`** — route guard using `useAuth()`; renders a loading state while `isLoading`, redirects to `/login` (via `Navigate replace`) when not authenticated, otherwise renders the nested route (`Outlet`)
+- **`src/App.jsx`** — replaced the Vite starter page; wraps the app in `AuthProvider` + `BrowserRouter`. Routes so far: `/` (home/nav), `/login` and `/registro` (placeholders, not yet wired to `AuthContext`), and `/meus-pedidos` behind `PrivateRoute` (placeholder)
+- `.env.example` documents `VITE_API_URL`; local overrides go in `frontend/.env` (gitignored)
+
+Manually verified in-browser: an unauthenticated visit to `/meus-pedidos` redirects to `/login` with no CORS/CSRF console errors (only the expected `401` from the initial `/me/` check).
+
+Not yet done: `/login` and `/registro` forms aren't wired to `useAuth().login`/`register`, there's no logout button in the UI, and no protected views beyond the `Meus Pedidos` placeholder consume real API data yet.
+
 ## Development Status
 
 - Backend: 100% complete
   - Phase 1 (Backend MVP): Complete
   - Phase 2 (REST API): Complete
   - Phase 3 (JWT Auth): Complete
-- Phase 4 (React Frontend): Planned
+- Phase 4 (React Frontend): In progress
+  - Done: Axios client with CSRF header injection and single-flight refresh-on-401 interceptor; `AuthContext` (`login`/`register`/`logout`/session hydration via `/api/me/`); `PrivateRoute` guard; placeholder routes (`/`, `/login`, `/registro`, `/meus-pedidos`) wired into `App.jsx`; backend `/api/me/` endpoint
+  - Remaining: real login/registro forms, logout UI, product catalog browsing, cart/checkout flow, order history view
 - Phase 5 (Deploy + PostgreSQL): Planned
