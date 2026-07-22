@@ -8,8 +8,12 @@
 ![Django](https://img.shields.io/badge/Django-6.0-092E20?style=for-the-badge&logo=django&logoColor=white)
 ![Django REST Framework](https://img.shields.io/badge/DRF-3.16-ff1709?style=for-the-badge&logo=django&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-Dev-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
+![React](https://img.shields.io/badge/React-19.2-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![Vite](https://img.shields.io/badge/Vite-8.1-646CFF?style=for-the-badge&logo=vite&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.3-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
+![shadcn/ui](https://img.shields.io/badge/shadcn%2Fui-4.13-000000?style=for-the-badge&logo=shadcnui&logoColor=white)
 
-**Backend for a real e-commerce platform, built for a brick-and-mortar fashion store expanding into online sales.**
+**Fullstack e-commerce platform, built for a brick-and-mortar fashion store expanding into online sales.**
 
 **Backend status: 100% complete and validated** — Phases 1, 2 and 3 finished.
 
@@ -21,11 +25,9 @@
 
 ## 📋 About
 
-**Royal Conceito** is a premium fashion store with 2 physical locations and 5 years in the market.
+**Royal Conceito** is a fullstack e-commerce platform built for a premium fashion store with 2 physical locations, currently expanding into online sales. The system spans a Django REST Framework backend — product catalog, inventory, orders, and authentication — and a React frontend for the customer-facing storefront.
 
-This project is the backend for their e-commerce platform — a REST API built with Django and Django REST Framework that handles product catalog, inventory management, and order processing with automated stock control.
-
-> 🏪 **Real client, real business** — Built to solve actual needs of a fashion retail store.
+It replaces a manual, WhatsApp/phone-based ordering process with a self-service purchase flow: product browsing, cart, shipping, payment, and order tracking.
 
 ---
 
