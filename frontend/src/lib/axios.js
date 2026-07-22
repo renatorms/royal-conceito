@@ -34,9 +34,10 @@ api.interceptors.response.use(
   async (error) => {
     const { config, response } = error;
 
-    const isRefreshCall = config?.url?.includes("/token/refresh/");
+    const isTokenEndpoint =
+      config?.url === "/token/" || config?.url?.includes("/token/refresh/");
 
-    if (response?.status === 401 && !config._retry && !isRefreshCall) {
+    if (response?.status === 401 && !config._retry && !isTokenEndpoint) {
       config._retry = true;
 
       try {
