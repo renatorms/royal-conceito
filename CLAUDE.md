@@ -139,14 +139,20 @@ React 19 + Vite + Tailwind + shadcn/ui, using `react-router-dom` for routing.
 - **`src/lib/axios.js`** — shared Axios instance (`api`), `baseURL` from `VITE_API_URL` (defaults to `http://localhost:8000/api`), `withCredentials: true` so the httpOnly JWT/CSRF cookies flow cross-origin
   - Request interceptor attaches `X-CSRFToken` (read from the `csrftoken` cookie) on state-changing methods (`post`, `put`, `patch`, `delete`), matching the backend's CSRF enforcement
   - Response interceptor catches a `401`, calls `POST /token/refresh/` once (deduped via a module-level `isRefreshing`/`refreshPromise` pair so concurrent 401s share a single refresh call), then retries the original request; requests already flagged `_retry`, or the refresh call itself, are not retried again to avoid loops
-- **`src/contexts/AuthContext.jsx`** — `AuthProvider` + `useAuth()` hook; on mount calls `GET /me/` to hydrate `user` (`isLoading` covers this initial check); exposes `login(username, password)` (`POST /token/`, then `GET /me/`), `register(dados)` (`POST /registro/`), and `logout()` (`POST /logout/`, always clears local `user`); `isAuthenticated` is derived as `!!user`
-- **`src/components/PrivateRoute.jsx`** — route guard using `useAuth()`; renders a loading state while `isLoading`, redirects to `/login` (via `Navigate replace`) when not authenticated, otherwise renders the nested route (`Outlet`)
-- **`src/App.jsx`** — replaced the Vite starter page; wraps the app in `AuthProvider` + `BrowserRouter`. Routes so far: `/` (home/nav), `/login` and `/registro` (placeholders, not yet wired to `AuthContext`), and `/meus-pedidos` behind `PrivateRoute` (placeholder)
+- **`src/contexts/AuthContext.jsx`** — `AuthProvider` + `useAuth()` hook; on mount calls `GET /me/` to hydrate `user` (`isLoading` covers this initial check); exposes `login(username, password)` (`POST /token/`, then `GET /me/`), `register(dados)` (`POST /registro/`), and `logout()` (`POST /logout/`, always clears local `user`); `isAuthenticated` is derived as `!!user`; on failure, both `login` and `register` resolve `{ success: false, error }` where `error` is the raw DRF error payload (`{ detail }` or `{ campo: [...] }`), not a pre-extracted string — kept raw so callers can map it onto a form (see `src/lib/apiErrors.js`)
+- **`src/components/PrivateRoute.jsx`** — route guard using `useAuth()`; renders a loading state while `isLoading`, redirects to `/login` (via `Navigate replace`, passing `state={{ from: location }}`) when not authenticated, otherwise renders the nested route (`Outlet`)
+- **`src/App.jsx`** — wraps the app in `AuthProvider` + `BrowserRouter`, renders `Header` above `Routes`. Routes: `/` (home), `/login` and `/registro` (real forms, see below), and `/meus-pedidos` behind `PrivateRoute` (placeholder)
+- **`src/components/Header.jsx`** — minimal/temporary header (full styling later): shows the logged-in username + a "Sair" button (`logout()` then redirect home) when authenticated, or a "Login" link otherwise
+- **Forms (`react-hook-form` + `zod`, via `@hookform/resolvers/zod`)** — the established pattern for all forms in this project (login/registro now, endereço/checkout later):
+  - One schema file per form in `src/schemas/` (e.g. `loginSchema.js`, `registroSchema.js`); cross-field validation (e.g. password confirmation) uses Zod's `.refine()` with an explicit `path`
+  - `src/lib/apiErrors.js::applyApiErrors(errorData, setError, setGeneralError)` — shared helper that maps a DRF error payload onto the form: `{ detail }` → general banner via `setGeneralError`, `{ campo: ["msg"] }` → per-field via react-hook-form's `setError`; reuse this for every new form instead of writing bespoke error-mapping
+  - `src/pages/Login.jsx` and `src/pages/Registro.jsx` are the reference implementation of the pattern (schema + `useForm({ resolver: zodResolver(schema) })` + `applyApiErrors` on failure)
+- **`src/components/ui/input.jsx`, `src/components/ui/label.jsx`** — plain shadcn-style form primitives (native `<input>`/`<label>`, not base-ui primitives) added alongside the existing `button.jsx`
 - `.env.example` documents `VITE_API_URL`; local overrides go in `frontend/.env` (gitignored)
 
 Manually verified in-browser: an unauthenticated visit to `/meus-pedidos` redirects to `/login` with no CORS/CSRF console errors (only the expected `401` from the initial `/me/` check).
 
-Not yet done: `/login` and `/registro` forms aren't wired to `useAuth().login`/`register`, there's no logout button in the UI, and no protected views beyond the `Meus Pedidos` placeholder consume real API data yet.
+Not yet done: no protected views beyond the `Meus Pedidos` placeholder consume real API data yet; `Header` is intentionally minimal and will be redesigned; product catalog browsing and cart/checkout are not started.
 
 ## Development Status
 
@@ -155,6 +161,6 @@ Not yet done: `/login` and `/registro` forms aren't wired to `useAuth().login`/`
   - Phase 2 (REST API): Complete
   - Phase 3 (JWT Auth): Complete
 - Phase 4 (React Frontend): In progress
-  - Done: Axios client with CSRF header injection and single-flight refresh-on-401 interceptor; `AuthContext` (`login`/`register`/`logout`/session hydration via `/api/me/`); `PrivateRoute` guard; placeholder routes (`/`, `/login`, `/registro`, `/meus-pedidos`) wired into `App.jsx`; backend `/api/me/` endpoint
-  - Remaining: real login/registro forms, logout UI, product catalog browsing, cart/checkout flow, order history view
+  - Done: Axios client with CSRF header injection and single-flight refresh-on-401 interceptor; `AuthContext` (`login`/`register`/`logout`/session hydration via `/api/me/`); `PrivateRoute` guard (preserves attempted route via `state.from`); backend `/api/me/` endpoint; real `/login` and `/registro` forms (`react-hook-form` + `zod`, shared `applyApiErrors` helper — the pattern for all future forms); minimal `Header` with login/logout
+  - Remaining: full styled header, product catalog browsing, cart/checkout flow, order history view
 - Phase 5 (Deploy + PostgreSQL): Planned
