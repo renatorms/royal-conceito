@@ -15,8 +15,6 @@
 
 **Fullstack e-commerce platform, built for a brick-and-mortar fashion store expanding into online sales.**
 
-**Backend status: 100% complete and validated** — Phases 1, 2 and 3 finished.
-
 [About](#-about) · [Features](#-features) · [Tech Stack](#-tech-stack) · [Architecture](#-architecture) · [API Endpoints](#-api-endpoints) · [Getting Started](#-getting-started) · [Roadmap](#-roadmap)
 
 </div>
