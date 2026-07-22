@@ -1,35 +1,27 @@
-import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { PrivateRoute } from "@/components/PrivateRoute";
+import { Header } from "@/components/Header";
+import Login from "@/pages/Login";
+import Registro from "@/pages/Registro";
 
 function Home() {
   return (
-    <div>
-      <h1>Royal Conceito</h1>
-      <nav>
-        <Link to="/login">Login</Link> | <Link to="/registro">Registro</Link> |{" "}
-        <Link to="/meus-pedidos">Meus Pedidos</Link>
-      </nav>
+    <div className="p-4">
+      <h1 className="text-xl font-semibold">Royal Conceito</h1>
     </div>
   );
 }
 
-function Login() {
-  return <h1>Login (placeholder)</h1>;
-}
-
-function Registro() {
-  return <h1>Registro (placeholder)</h1>;
-}
-
 function MeusPedidos() {
-  return <h1>Meus Pedidos (placeholder, rota protegida)</h1>;
+  return <h1 className="p-4">Meus Pedidos (placeholder, rota protegida)</h1>;
 }
 
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <Header />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />

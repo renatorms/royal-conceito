@@ -22,9 +22,10 @@ export function AuthProvider({ children }) {
       setUser(response.data);
       return { success: true };
     } catch (error) {
-      const message =
-        error.response?.data?.detail || "Usuário ou senha inválidos.";
-      return { success: false, error: message };
+      const data = error.response?.data || {
+        detail: "Usuário ou senha inválidos.",
+      };
+      return { success: false, error: data };
     }
   }
 
@@ -33,8 +34,10 @@ export function AuthProvider({ children }) {
       await api.post("/registro/", dados);
       return { success: true };
     } catch (error) {
-      const message = error.response?.data || "Não foi possível concluir o cadastro.";
-      return { success: false, error: message };
+      const data = error.response?.data || {
+        detail: "Não foi possível concluir o cadastro.",
+      };
+      return { success: false, error: data };
     }
   }
 
