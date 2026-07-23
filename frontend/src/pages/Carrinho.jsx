@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { MinusIcon, PlusIcon, XIcon } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { ProdutoImagemPlaceholder } from "@/components/ProdutoImagemPlaceholder";
@@ -7,11 +7,14 @@ import { formatarPreco } from "@/lib/utils";
 
 export default function Carrinho() {
   const { itens, removerItem, atualizarQuantidade, totalValor } = useCart();
+  const location = useLocation();
 
   if (itens.length === 0) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-16 text-center">
-        <p className="text-sm text-muted-foreground">Seu carrinho está vazio.</p>
+        <p className="text-sm text-muted-foreground">
+          {location.state?.mensagem ?? "Seu carrinho está vazio."}
+        </p>
         <Link
           to="/"
           className="mt-4 inline-block text-sm text-primary underline-offset-4 hover:underline"
