@@ -4,14 +4,8 @@ import { PrivateRoute } from "@/components/PrivateRoute";
 import { Header } from "@/components/Header";
 import Login from "@/pages/Login";
 import Registro from "@/pages/Registro";
-
-function Home() {
-  return (
-    <div className="p-4">
-      <h1 className="text-xl font-semibold">Royal Conceito</h1>
-    </div>
-  );
-}
+import Catalogo from "@/pages/Catalogo";
+import ProdutoDetalhe from "@/pages/ProdutoDetalhe";
 
 function MeusPedidos() {
   return <h1 className="p-4">Meus Pedidos (placeholder, rota protegida)</h1>;
@@ -23,7 +17,8 @@ function App() {
       <BrowserRouter>
         <Header />
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Catalogo />} />
+          <Route path="/produtos/:id" element={<ProdutoDetalhe />} />
           <Route path="/login" element={<Login />} />
           <Route path="/registro" element={<Registro />} />
           <Route element={<PrivateRoute />}>

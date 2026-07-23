@@ -141,18 +141,23 @@ React 19 + Vite + Tailwind + shadcn/ui, using `react-router-dom` for routing.
   - Response interceptor catches a `401`, calls `POST /token/refresh/` once (deduped via a module-level `isRefreshing`/`refreshPromise` pair so concurrent 401s share a single refresh call), then retries the original request; requests already flagged `_retry`, or the refresh call itself, are not retried again to avoid loops
 - **`src/contexts/AuthContext.jsx`** — `AuthProvider` + `useAuth()` hook; on mount calls `GET /me/` to hydrate `user` (`isLoading` covers this initial check); exposes `login(username, password)` (`POST /token/`, then `GET /me/`), `register(dados)` (`POST /registro/`), and `logout()` (`POST /logout/`, always clears local `user`); `isAuthenticated` is derived as `!!user`; on failure, both `login` and `register` resolve `{ success: false, error }` where `error` is the raw DRF error payload (`{ detail }` or `{ campo: [...] }`), not a pre-extracted string — kept raw so callers can map it onto a form (see `src/lib/apiErrors.js`)
 - **`src/components/PrivateRoute.jsx`** — route guard using `useAuth()`; renders a loading state while `isLoading`, redirects to `/login` (via `Navigate replace`, passing `state={{ from: location }}`) when not authenticated, otherwise renders the nested route (`Outlet`)
-- **`src/App.jsx`** — wraps the app in `AuthProvider` + `BrowserRouter`, renders `Header` above `Routes`. Routes: `/` (home), `/login` and `/registro` (real forms, see below), and `/meus-pedidos` behind `PrivateRoute` (placeholder)
+- **`src/App.jsx`** — wraps the app in `AuthProvider` + `BrowserRouter`, renders `Header` above `Routes`. Routes: `/` (`Catalogo`, product grid), `/produtos/:id` (`ProdutoDetalhe`), `/login` and `/registro` (real forms, see below), and `/meus-pedidos` behind `PrivateRoute` (placeholder)
 - **`src/components/Header.jsx`** — minimal/temporary header (full styling later): shows the logged-in username + a "Sair" button (`logout()` then redirect home) when authenticated, or a "Login" link otherwise
 - **Forms (`react-hook-form` + `zod`, via `@hookform/resolvers/zod`)** — the established pattern for all forms in this project (login/registro now, endereço/checkout later):
   - One schema file per form in `src/schemas/` (e.g. `loginSchema.js`, `registroSchema.js`); cross-field validation (e.g. password confirmation) uses Zod's `.refine()` with an explicit `path`
   - `src/lib/apiErrors.js::applyApiErrors(errorData, setError, setGeneralError)` — shared helper that maps a DRF error payload onto the form: `{ detail }` → general banner via `setGeneralError`, `{ campo: ["msg"] }` → per-field via react-hook-form's `setError`; reuse this for every new form instead of writing bespoke error-mapping
   - `src/pages/Login.jsx` and `src/pages/Registro.jsx` are the reference implementation of the pattern (schema + `useForm({ resolver: zodResolver(schema) })` + `applyApiErrors` on failure)
 - **`src/components/ui/input.jsx`, `src/components/ui/label.jsx`** — plain shadcn-style form primitives (native `<input>`/`<label>`, not base-ui primitives) added alongside the existing `button.jsx`
+- **`src/api/`** — one function-per-resource module per REST resource, using the shared `api` axios instance; `produtos.js` is the first one: `listarProdutos({ categoria, marca, search, ordering, page })`, `buscarProduto(id)`, `listarCategorias()`, `listarMarcas()` — the last two follow the API's `next` link to the end since `/categorias/` and `/marcas/` are paginated too (10/page) and the catalog currently has more than 10 of each
+- **`src/pages/Catalogo.jsx`** (route `/`) — product grid consuming `/api/produtos/`; search (debounced 400ms), categoria/marca filters, price ordering, and pagination (via `count`/`next`/`previous`) are all synced to the URL through `useSearchParams`, so filtered views are shareable links and work with browser back/forward
+- **`src/pages/ProdutoDetalhe.jsx`** (route `/produtos/:id`) — single product view (marca, nome, categoria, preço, variações); out-of-stock sizes are shown alongside in-stock ones with a disabled/"Esgotado" treatment rather than being omitted
+- **`src/components/ProdutoCard.jsx`, `src/components/ProdutoImagemPlaceholder.jsx`** — product card and a fixed placeholder image reused for every product (the backend has no product image field yet)
+- **`src/components/ui/select.jsx`, `src/components/ui/card.jsx`** — added via the `shadcn` CLI (same `style: base-vega` as the existing `button.jsx`/`input.jsx`) for the catalog filters and product cards
 - `.env.example` documents `VITE_API_URL`; local overrides go in `frontend/.env` (gitignored)
 
-Manually verified in-browser: an unauthenticated visit to `/meus-pedidos` redirects to `/login` with no CORS/CSRF console errors (only the expected `401` from the initial `/me/` check).
+Manually verified in-browser: an unauthenticated visit to `/meus-pedidos` redirects to `/login` with no CORS/CSRF console errors (only the expected `401` from the initial `/me/` check); the catalog grid, search/filter/ordering/pagination sync to the URL and survive browser back/forward, and the product detail page renders variações with out-of-stock sizes visibly marked.
 
-Not yet done: no protected views beyond the `Meus Pedidos` placeholder consume real API data yet; `Header` is intentionally minimal and will be redesigned; product catalog browsing and cart/checkout are not started.
+Not yet done: no protected views beyond the `Meus Pedidos` placeholder consume real API data yet; `Header` is intentionally minimal and will be redesigned; cart and checkout are not started.
 
 ## Development Status
 
@@ -161,6 +166,6 @@ Not yet done: no protected views beyond the `Meus Pedidos` placeholder consume r
   - Phase 2 (REST API): Complete
   - Phase 3 (JWT Auth): Complete
 - Phase 4 (React Frontend): In progress
-  - Done: Axios client with CSRF header injection and single-flight refresh-on-401 interceptor; `AuthContext` (`login`/`register`/`logout`/session hydration via `/api/me/`); `PrivateRoute` guard (preserves attempted route via `state.from`); backend `/api/me/` endpoint; real `/login` and `/registro` forms (`react-hook-form` + `zod`, shared `applyApiErrors` helper — the pattern for all future forms); minimal `Header` with login/logout
-  - Remaining: full styled header, product catalog browsing, cart/checkout flow, order history view
+  - Done: Axios client with CSRF header injection and single-flight refresh-on-401 interceptor; `AuthContext` (`login`/`register`/`logout`/session hydration via `/api/me/`); `PrivateRoute` guard (preserves attempted route via `state.from`); backend `/api/me/` endpoint; real `/login` and `/registro` forms (`react-hook-form` + `zod`, shared `applyApiErrors` helper — the pattern for all future forms); minimal `Header` with login/logout; product catalog (`Catalogo.jsx` at `/`, filters/search/ordering/pagination synced to the URL) and product detail page (`ProdutoDetalhe.jsx` at `/produtos/:id`), backed by `src/api/produtos.js`
+  - Remaining: full styled header, cart/checkout flow, order history view
 - Phase 5 (Deploy + PostgreSQL): Planned
