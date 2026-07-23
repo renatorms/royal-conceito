@@ -1,12 +1,21 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { MinusIcon, PlusIcon } from "lucide-react";
 import { buscarProduto } from "@/api/produtos";
 import { ProdutoImagemPlaceholder } from "@/components/ProdutoImagemPlaceholder";
+import { Button } from "@/components/ui/button";
+import { useCart } from "@/contexts/CartContext";
 import { cn, formatarPreco } from "@/lib/utils";
+
+const FEEDBACK_DURATION_MS = 1500;
 
 export default function ProdutoDetalhe() {
   const { id } = useParams();
+  const { adicionarItem } = useCart();
   const [resultado, setResultado] = useState({ id: null, produto: null, erro: null });
+  const [variacaoId, setVariacaoId] = useState(null);
+  const [quantidade, setQuantidade] = useState(1);
+  const [adicionado, setAdicionado] = useState(false);
   const isLoading = resultado.id !== id;
 
   useEffect(() => {
@@ -23,6 +32,12 @@ export default function ProdutoDetalhe() {
     return () => {
       ignore = true;
     };
+  }, [id]);
+
+  useEffect(() => {
+    setVariacaoId(null);
+    setQuantidade(1);
+    setAdicionado(false);
   }, [id]);
 
   if (isLoading) {
@@ -48,6 +63,26 @@ export default function ProdutoDetalhe() {
   }
 
   const produto = resultado.produto;
+  const variacaoSelecionada = produto.variacoes.find((v) => v.id === variacaoId) || null;
+
+  function selecionarVariacao(variacao) {
+    if (variacao.estoque <= 0) return;
+    setVariacaoId(variacao.id);
+    setQuantidade(1);
+    setAdicionado(false);
+  }
+
+  function alterarQuantidade(delta) {
+    if (!variacaoSelecionada) return;
+    setQuantidade((atual) => Math.min(Math.max(atual + delta, 1), variacaoSelecionada.estoque));
+  }
+
+  function handleAdicionar() {
+    if (!variacaoSelecionada) return;
+    adicionarItem(produto, variacaoSelecionada, quantidade);
+    setAdicionado(true);
+    setTimeout(() => setAdicionado(false), FEEDBACK_DURATION_MS);
+  }
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -76,13 +111,19 @@ export default function ProdutoDetalhe() {
               <div className="flex flex-wrap gap-2">
                 {produto.variacoes.map((variacao) => {
                   const semEstoque = variacao.estoque <= 0;
+                  const selecionada = variacao.id === variacaoId;
                   return (
-                    <span
+                    <button
                       key={variacao.id}
-                      aria-disabled={semEstoque}
+                      type="button"
+                      disabled={semEstoque}
+                      aria-pressed={selecionada}
+                      onClick={() => selecionarVariacao(variacao)}
                       className={cn(
-                        "flex min-w-12 flex-col items-center justify-center gap-0.5 rounded-md border border-border px-3 py-1.5 text-sm",
-                        semEstoque && "cursor-not-allowed border-dashed opacity-50"
+                        "flex min-w-12 flex-col items-center justify-center gap-0.5 rounded-md border border-border px-3 py-1.5 text-sm transition-colors",
+                        semEstoque && "cursor-not-allowed border-dashed opacity-50",
+                        !semEstoque && "hover:border-primary",
+                        selecionada && "border-primary bg-primary/10"
                       )}
                     >
                       <span className={cn(semEstoque && "text-muted-foreground line-through")}>
@@ -93,12 +134,45 @@ export default function ProdutoDetalhe() {
                           Esgotado
                         </span>
                       )}
-                    </span>
+                    </button>
                   );
                 })}
               </div>
             )}
           </div>
+
+          {variacaoSelecionada && (
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium">Quantidade</span>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon-sm"
+                  aria-label="Diminuir quantidade"
+                  disabled={quantidade <= 1}
+                  onClick={() => alterarQuantidade(-1)}
+                >
+                  <MinusIcon />
+                </Button>
+                <span className="w-6 text-center text-sm">{quantidade}</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon-sm"
+                  aria-label="Aumentar quantidade"
+                  disabled={quantidade >= variacaoSelecionada.estoque}
+                  onClick={() => alterarQuantidade(1)}
+                >
+                  <PlusIcon />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <Button type="button" disabled={!variacaoSelecionada} onClick={handleAdicionar}>
+            {adicionado ? "Adicionado!" : "Adicionar ao carrinho"}
+          </Button>
         </div>
       </div>
     </div>
