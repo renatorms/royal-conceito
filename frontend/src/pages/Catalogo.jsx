@@ -135,6 +135,22 @@ export default function Catalogo() {
 
   const totalPaginas = Math.max(1, Math.ceil(resultado.count / PAGE_SIZE));
 
+  const categoriaItems = [
+    { value: TODOS, label: "Todas as categorias" },
+    ...categorias.map((c) => ({ value: String(c.id), label: c.nome })),
+  ];
+
+  const marcaItems = [
+    { value: TODOS, label: "Todas as marcas" },
+    ...marcas.map((m) => ({ value: String(m.id), label: m.nome })),
+  ];
+
+  const orderingItems = [
+    { value: PADRAO, label: "Padrão" },
+    { value: "preco", label: "Menor preço" },
+    { value: "-preco", label: "Maior preço" },
+  ];
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       <h1 className="mb-6 text-2xl font-semibold">Catálogo</h1>
@@ -147,42 +163,54 @@ export default function Catalogo() {
           onChange={(e) => setSearchInput(e.target.value)}
         />
 
-        <Select value={categoria || TODOS} onValueChange={(v) => atualizarFiltro("categoria", v)}>
-          <SelectTrigger>
+        <Select
+          items={categoriaItems}
+          value={categoria || TODOS}
+          onValueChange={(v) => atualizarFiltro("categoria", v)}
+        >
+          <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Categoria" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={TODOS}>Todas as categorias</SelectItem>
-            {categorias.map((c) => (
-              <SelectItem key={c.id} value={String(c.id)}>
-                {c.nome}
+            {categoriaItems.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
 
-        <Select value={marca || TODOS} onValueChange={(v) => atualizarFiltro("marca", v)}>
-          <SelectTrigger>
+        <Select
+          items={marcaItems}
+          value={marca || TODOS}
+          onValueChange={(v) => atualizarFiltro("marca", v)}
+        >
+          <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Marca" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={TODOS}>Todas as marcas</SelectItem>
-            {marcas.map((m) => (
-              <SelectItem key={m.id} value={String(m.id)}>
-                {m.nome}
+            {marcaItems.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
 
-        <Select value={ordering || PADRAO} onValueChange={(v) => atualizarFiltro("ordering", v)}>
-          <SelectTrigger>
+        <Select
+          items={orderingItems}
+          value={ordering || PADRAO}
+          onValueChange={(v) => atualizarFiltro("ordering", v)}
+        >
+          <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Ordenar" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={PADRAO}>Padrão</SelectItem>
-            <SelectItem value="preco">Menor preço</SelectItem>
-            <SelectItem value="-preco">Maior preço</SelectItem>
+            {orderingItems.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
