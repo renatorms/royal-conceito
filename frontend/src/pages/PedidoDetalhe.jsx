@@ -83,6 +83,18 @@ export default function PedidoDetalhe() {
         <PedidoStatusBadge status={pedido.status} />
       </div>
 
+      {pedido.endereco_detalhe && (
+        <div className="mb-6">
+          <h2 className="mb-2 text-sm font-medium text-muted-foreground">Endereço de entrega</h2>
+          <p className="text-sm">
+            {pedido.endereco_detalhe.rua}, {pedido.endereco_detalhe.numero}
+            {pedido.endereco_detalhe.complemento ? ` - ${pedido.endereco_detalhe.complemento}` : ""} —{" "}
+            {pedido.endereco_detalhe.bairro}, {pedido.endereco_detalhe.cidade}/
+            {pedido.endereco_detalhe.estado} — CEP {pedido.endereco_detalhe.cep}
+          </p>
+        </div>
+      )}
+
       <div className="flex flex-col gap-3">
         {pedido.itens.map((item) => (
           <div

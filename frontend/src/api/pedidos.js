@@ -4,8 +4,8 @@ import api from "@/lib/axios";
 // that creates a Pedido together with its ItemPedido lines — the API only
 // supports creating the Pedido first, then one POST /itens/ per cart line
 // referencing the returned pedido.id.
-export async function criarPedido() {
-  const { data } = await api.post("/pedidos/", {});
+export async function criarPedido({ endereco } = {}) {
+  const { data } = await api.post("/pedidos/", endereco ? { endereco } : {});
   return data;
 }
 

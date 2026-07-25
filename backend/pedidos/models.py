@@ -21,6 +21,17 @@ class Pedido(models.Model):
         blank=True,
         related_name="pedidos",
     )
+    endereco = models.ForeignKey(
+        "Endereco",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="pedidos",
+    )
+    # PROTECT: um pedido histórico não pode perder a referência de para onde
+    # foi enviado — não deixa deletar um endereço vinculado a algum pedido
+    # (mesmo padrão de ItemPedido.variacao abaixo, que não deixa deletar uma
+    # variação vendida)
     data_pedido = models.DateTimeField(auto_now_add=True)
     total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="novo")

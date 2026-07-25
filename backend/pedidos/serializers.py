@@ -31,8 +31,9 @@ class ItemPedidoSerializer(serializers.ModelSerializer):
 
 class PedidoSerializer(serializers.ModelSerializer):
     itens = ItemPedidoSerializer(many=True, read_only=True)
+    endereco_detalhe = EnderecoSerializer(source="endereco", read_only=True)
 
     class Meta:
         model = Pedido
-        fields = ["id", "usuario", "itens", "data_pedido", "total", "status"]
+        fields = ["id", "usuario", "itens", "endereco", "endereco_detalhe", "data_pedido", "total", "status"]
         read_only_fields = ["total"]

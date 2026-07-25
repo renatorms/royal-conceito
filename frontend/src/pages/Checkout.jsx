@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { enderecoSchema } from "@/schemas/enderecoSchema";
 import { listarEnderecos, criarEndereco } from "@/api/enderecos";
@@ -18,7 +17,6 @@ const FRETE_PLACEHOLDER = 20;
 const NOVO_ENDERECO = "novo";
 
 export default function Checkout() {
-  const { user } = useAuth();
   const { itens, totalValor, limparCarrinho } = useCart();
   const navigate = useNavigate();
 
@@ -101,12 +99,15 @@ export default function Checkout() {
 
     setEnviando(true);
 
+    let enderecoId = enderecoSelecionado;
+
     if (usandoNovoEndereco) {
       try {
-        // Endereco.usuario não tem blank=True no model, então o serializer
-        // exige o campo mesmo com perform_create() sobrescrevendo-o com
-        // request.user logo em seguida — só evita o 400 de validação.
-        await criarEndereco({ ...enderecoSchema.parse(getValues()), usuario: user.id });
+        // `usuario` não precisa mais ser enviado aqui — EnderecoSerializer
+        // marca o campo como read_only e o backend sempre o preenche com
+        // request.user (ver CLAUDE.md).
+        const novoEndereco = await criarEndereco(enderecoSchema.parse(getValues()));
+        enderecoId = novoEndereco.id;
       } catch (error) {
         applyApiErrors(error.response?.data, setError, setErroGeral);
         setEnviando(false);
@@ -116,7 +117,7 @@ export default function Checkout() {
 
     let pedido;
     try {
-      pedido = await criarPedido();
+      pedido = await criarPedido({ endereco: enderecoId });
     } catch (error) {
       setErroGeral(
         error.response?.data?.detail || "Não foi possível criar o pedido. Tente novamente."

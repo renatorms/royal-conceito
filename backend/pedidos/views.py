@@ -63,4 +63,9 @@ class PedidoViewSet(viewsets.ModelViewSet):
         return Pedido.objects.filter(usuario=user)
 
     def perform_create(self, serializer):
+        endereco = serializer.validated_data.get("endereco")
+        user = self.request.user
+        if endereco and not user.is_staff and endereco.usuario != user:
+            raise PermissionDenied("Você não pode vincular a este pedido um endereço que não é seu.")
+
         serializer.save(usuario=self.request.user)
