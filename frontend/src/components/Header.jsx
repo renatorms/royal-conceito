@@ -25,6 +25,10 @@ export function Header() {
           Meus Pedidos
         </Link>
 
+        <Link to="/meus-enderecos" className="text-muted-foreground hover:text-foreground">
+          Meus Endereços
+        </Link>
+
         <Link
           to="/carrinho"
           aria-label="Carrinho"

@@ -11,6 +11,7 @@ import Carrinho from "@/pages/Carrinho";
 import Checkout from "@/pages/Checkout";
 import MeusPedidos from "@/pages/MeusPedidos";
 import PedidoDetalhe from "@/pages/PedidoDetalhe";
+import MeusEnderecos from "@/pages/MeusEnderecos";
 
 function PedidoConfirmado() {
   const location = useLocation();
@@ -51,6 +52,7 @@ function App() {
               <Route path="/pedido-confirmado" element={<PedidoConfirmado />} />
               <Route path="/meus-pedidos" element={<MeusPedidos />} />
               <Route path="/meus-pedidos/:id" element={<PedidoDetalhe />} />
+              <Route path="/meus-enderecos" element={<MeusEnderecos />} />
             </Route>
           </Routes>
         </BrowserRouter>
