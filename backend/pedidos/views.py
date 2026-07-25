@@ -21,6 +21,14 @@ class EnderecoViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(usuario=self.request.user)
 
+    def perform_update(self, serializer):
+        # `usuario` is read_only on EnderecoSerializer, so a payload can't
+        # reassign it anyway — this is defense in depth. Re-assert the
+        # *existing* owner (not self.request.user): IsDonorOrStaff lets staff
+        # edit any address, and forcing self.request.user here would silently
+        # reassign someone else's address to the staff member doing the edit.
+        serializer.save(usuario=serializer.instance.usuario)
+
 
 class ItemPedidoViewSet(viewsets.ModelViewSet):
     queryset = ItemPedido.objects.all()
