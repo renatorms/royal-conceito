@@ -17,3 +17,20 @@ export async function criarItemPedido({ pedido, variacao, quantidade }) {
 export async function deletarPedido(id) {
   await api.delete(`/pedidos/${id}/`);
 }
+
+// Diferente de listarCategorias()/listarMarcas() (que seguem `next` até o
+// fim), o histórico de pedidos de um usuário cresce indefinidamente, então
+// aqui a paginação é real — a página pedida vai direto pro backend e a UI
+// mostra controles Anterior/Próxima, no mesmo padrão de listarProdutos().
+export async function listarPedidos({ page } = {}) {
+  const params = {};
+  if (page) params.page = page;
+
+  const { data } = await api.get("/pedidos/", { params });
+  return data;
+}
+
+export async function buscarPedido(id) {
+  const { data } = await api.get(`/pedidos/${id}/`);
+  return data;
+}

@@ -9,10 +9,8 @@ import Catalogo from "@/pages/Catalogo";
 import ProdutoDetalhe from "@/pages/ProdutoDetalhe";
 import Carrinho from "@/pages/Carrinho";
 import Checkout from "@/pages/Checkout";
-
-function MeusPedidos() {
-  return <h1 className="p-4">Meus Pedidos (placeholder, rota protegida)</h1>;
-}
+import MeusPedidos from "@/pages/MeusPedidos";
+import PedidoDetalhe from "@/pages/PedidoDetalhe";
 
 function PedidoConfirmado() {
   const location = useLocation();
@@ -52,6 +50,7 @@ function App() {
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/pedido-confirmado" element={<PedidoConfirmado />} />
               <Route path="/meus-pedidos" element={<MeusPedidos />} />
+              <Route path="/meus-pedidos/:id" element={<PedidoDetalhe />} />
             </Route>
           </Routes>
         </BrowserRouter>
