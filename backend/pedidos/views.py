@@ -1,3 +1,4 @@
+from django.db.models.deletion import ProtectedError
 from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
@@ -28,6 +29,23 @@ class EnderecoViewSet(viewsets.ModelViewSet):
         # edit any address, and forcing self.request.user here would silently
         # reassign someone else's address to the staff member doing the edit.
         serializer.save(usuario=serializer.instance.usuario)
+
+    def perform_destroy(self, instance):
+        # Endereco.usuario aside, Pedido.endereco is PROTECT (see CLAUDE.md) —
+        # deleting an address still linked to any order raises ProtectedError.
+        # Without this, that bubbles up as an unhandled 500; catch it and
+        # return the same {"detail": ...} shape used elsewhere in this API.
+        try:
+            instance.delete()
+        except ProtectedError:
+            raise ValidationError(
+                {
+                    "detail": (
+                        "Este endereço não pode ser excluído porque está "
+                        "vinculado a um ou mais pedidos."
+                    )
+                }
+            )
 
 
 class ItemPedidoViewSet(viewsets.ModelViewSet):

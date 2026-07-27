@@ -61,8 +61,10 @@ export default function MeusEnderecos() {
     try {
       await deletarEndereco(id);
       setEnderecos((atual) => atual.filter((endereco) => endereco.id !== id));
-    } catch {
-      setErroExcluir("Não foi possível excluir este endereço. Tente novamente.");
+    } catch (error) {
+      setErroExcluir(
+        error.response?.data?.detail || "Não foi possível excluir este endereço. Tente novamente."
+      );
     }
   }
 
