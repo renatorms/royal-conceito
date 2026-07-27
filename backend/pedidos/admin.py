@@ -31,6 +31,23 @@ ITEM_PEDIDO_CAMPOS_CALCULADOS = ["preco_unitario", "subtotal"]
 # stock correctly.
 ITEM_PEDIDO_CAMPOS_SEM_VALIDACAO_NA_EDICAO = ["quantidade"]
 
+# Same underlying problem as ITEM_PEDIDO_CAMPOS_SEM_VALIDACAO_NA_EDICAO above,
+# for the two FKs instead of quantidade — found during the same admin audit
+# but not fixed at the time (see CLAUDE.md). Reassigning `variacao` on an
+# *existing* ItemPedido triggers no stock validation or adjustment at all:
+# diminui_estoque only runs `if created:`, so neither the old variacao's
+# stock is restored nor the new one is checked/decremented — the item ends
+# up priced and accounted for a size that was never actually validated for
+# this sale. Reassigning `pedido` moves the line to a different order, but
+# atualiza_total_pedido only recalculates `instance.pedido` (the *new*
+# order) on save — the *old* order's total is left stale, still counting a
+# line that isn't its own anymore. Same fix, same conditional: readonly only
+# when obj is not None, since neither FK has a default and both are
+# required, so an unconditional readonly would break creating a new item.
+# Any real reassignment should go through the API instead (cancel/recreate
+# the item), which validates stock and keeps both orders' totals correct.
+ITEM_PEDIDO_CAMPOS_FK_SEM_VALIDACAO_NA_EDICAO = ["pedido", "variacao"]
+
 
 class ItemPedidoInline(admin.TabularInline):
     model = ItemPedido
@@ -53,6 +70,7 @@ class ItemPedidoInline(admin.TabularInline):
                 *self.readonly_fields,
                 *ITEM_PEDIDO_CAMPOS_CALCULADOS,
                 *ITEM_PEDIDO_CAMPOS_SEM_VALIDACAO_NA_EDICAO,
+                *ITEM_PEDIDO_CAMPOS_FK_SEM_VALIDACAO_NA_EDICAO,
             ]
         return self.readonly_fields
 
@@ -82,14 +100,15 @@ class ItemPedidoAdmin(admin.ModelAdmin):
     def get_readonly_fields(self, request, obj=None):
         # Here `obj` is the specific ItemPedido being edited (this ModelAdmin
         # isn't an inline), so this cleanly means "existing item" vs.
-        # "creating a new standalone ItemPedido" — see
-        # ITEM_PEDIDO_CAMPOS_CALCULADOS/ITEM_PEDIDO_CAMPOS_SEM_VALIDACAO_NA_EDICAO
-        # above for why only the former is readonly.
+        # "creating a new standalone ItemPedido" — see the
+        # ITEM_PEDIDO_CAMPOS_* constants above for why only the former is
+        # readonly.
         if obj is not None:
             return [
                 *self.readonly_fields,
                 *ITEM_PEDIDO_CAMPOS_CALCULADOS,
                 *ITEM_PEDIDO_CAMPOS_SEM_VALIDACAO_NA_EDICAO,
+                *ITEM_PEDIDO_CAMPOS_FK_SEM_VALIDACAO_NA_EDICAO,
             ]
         return self.readonly_fields
 
