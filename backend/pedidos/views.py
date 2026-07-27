@@ -101,7 +101,17 @@ class ItemPedidoViewSet(viewsets.ModelViewSet):
                     {"detail": f"Estoque insuficiente. Restam apenas {variacao.estoque} unidades."}
                 )
 
-            serializer.save(preco_unitario=variacao.produto.preco)
+            # produto_nome/produto_tamanho are frozen here, at creation, same
+            # as preco_unitario — see CLAUDE.md and the ItemPedido model
+            # comment for why: without this, a later edit to Variacao.produto
+            # or Variacao.tamanho would silently rewrite how this sale is
+            # displayed forever after, even though the sale itself never
+            # changed.
+            serializer.save(
+                preco_unitario=variacao.produto.preco,
+                produto_nome=variacao.produto.nome,
+                produto_tamanho=variacao.tamanho,
+            )
 
 
 class PedidoViewSet(viewsets.ModelViewSet):
@@ -171,11 +181,15 @@ class PedidoViewSet(viewsets.ModelViewSet):
                         }
                     )
 
+                # produto_nome/produto_tamanho frozen at creation — same
+                # reasoning as ItemPedidoViewSet.perform_create() above.
                 ItemPedido.objects.create(
                     pedido=pedido,
                     variacao=variacao,
                     quantidade=quantidade,
                     preco_unitario=variacao.produto.preco,
+                    produto_nome=variacao.produto.nome,
+                    produto_tamanho=variacao.tamanho,
                 )
 
     def perform_update(self, serializer):

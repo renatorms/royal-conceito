@@ -14,6 +14,28 @@ from .models import Endereco, ItemPedido, Pedido
 # supply a value, and saving would fail with a NOT NULL constraint error.
 ITEM_PEDIDO_CAMPOS_CALCULADOS = ["preco_unitario", "subtotal"]
 
+# produto_nome/produto_tamanho are a different case from the fields above,
+# deliberately *not* in ITEM_PEDIDO_CAMPOS_CALCULADOS: preco_unitario/
+# subtotal must stay editable on the add form because nothing derives them
+# automatically without extra code — but produto_nome/produto_tamanho are
+# always supposed to be a direct copy of the chosen Variacao's own
+# produto.nome/tamanho (see the ItemPedido model comment), never typed by
+# hand, not even at creation. Free-typing them on the add form let a staff
+# member pick Variacao "ADS COLOR - M" from the dropdown while typing
+# "Camisa Teste" into produto_nome — a mismatch baked in at creation, not
+# just an edit-time risk. So these are unconditionally readonly (see
+# ItemPedidoAdmin.readonly_fields/ItemPedidoInline.readonly_fields below,
+# not gated by obj is not None like every other conditional list in this
+# file) — readonly_fields alone only stops typing, though, it doesn't
+# *populate* the field for a new row, so ItemPedidoAdmin.save_model() and
+# PedidoAdmin.save_formset() derive both from the instance's variacao
+# directly, every time either is called (add or edit) — belt-and-suspenders
+# against a forged payload as much as against a blank one, and idempotent
+# on edit today since variacao is already readonly there too (see
+# ITEM_PEDIDO_CAMPOS_FK_SEM_VALIDACAO_NA_EDICAO below), so re-deriving just
+# re-asserts the same value that's already correctly stored.
+ITEM_PEDIDO_CAMPOS_SEMPRE_DERIVADOS = ["produto_nome", "produto_tamanho"]
+
 # `quantidade` isn't server-computed like the fields above — a customer picks
 # it at checkout, and it's normal (non-read_only) input on ItemPedidoSerializer
 # and the itens_criacao entries on PedidoSerializer. The problem here is
@@ -75,6 +97,10 @@ class ItemPedidoInline(admin.TabularInline):
     model = ItemPedido
     form = ItemPedidoForm
     extra = 0
+    # Unconditional — see ITEM_PEDIDO_CAMPOS_SEMPRE_DERIVADOS above for why
+    # these two specifically aren't gated by obj is not None like the rest
+    # of get_readonly_fields() below.
+    readonly_fields = ITEM_PEDIDO_CAMPOS_SEMPRE_DERIVADOS
 
     def get_readonly_fields(self, request, obj=None):
         # `obj` here is the *parent* Pedido, not the individual ItemPedido
@@ -131,12 +157,37 @@ class PedidoAdmin(admin.ModelAdmin):
             return [*self.readonly_fields, "usuario", "endereco"]
         return self.readonly_fields
 
+    def save_formset(self, request, form, formset, change):
+        # ItemPedidoInline is the only inline here. produto_nome/produto_
+        # tamanho are unconditionally readonly on it (ITEM_PEDIDO_CAMPOS_
+        # SEMPRE_DERIVADOS), so they can never be typed — but that alone
+        # doesn't *populate* them for a brand-new ItemPedido added via "Add
+        # another" on a Pedido's own *add* page, the one place this inline
+        # still allows creating a new row at all (see ItemPedidoInline.
+        # get_readonly_fields() above — on an existing Pedido, every field
+        # is readonly, including variacao itself, so no new row can be
+        # created there in the first place). Default save_formset() is just
+        # `formset.save()`; derive both fields from each instance's variacao
+        # before it's actually written, same as ItemPedidoAdmin.save_model()
+        # below.
+        instances = formset.save(commit=False)
+        for obj in formset.deleted_objects:
+            obj.delete()
+        for obj in instances:
+            if obj.variacao_id:
+                obj.produto_nome = obj.variacao.produto.nome
+                obj.produto_tamanho = obj.variacao.tamanho
+            obj.save()
+        formset.save_m2m()
+
 
 @admin.register(ItemPedido)
 class ItemPedidoAdmin(admin.ModelAdmin):
     form = ItemPedidoForm
     list_display = ["pedido", "variacao", "quantidade", "preco_unitario", "subtotal"]
     list_filter = ["pedido__status"]
+    # Unconditional — see ITEM_PEDIDO_CAMPOS_SEMPRE_DERIVADOS above.
+    readonly_fields = ITEM_PEDIDO_CAMPOS_SEMPRE_DERIVADOS
 
     def get_readonly_fields(self, request, obj=None):
         # Here `obj` is the specific ItemPedido being edited (this ModelAdmin
@@ -152,6 +203,24 @@ class ItemPedidoAdmin(admin.ModelAdmin):
                 *ITEM_PEDIDO_CAMPOS_FK_SEM_VALIDACAO_NA_EDICAO,
             ]
         return self.readonly_fields
+
+    def save_model(self, request, obj, form, change):
+        # readonly_fields keeps produto_nome/produto_tamanho from being
+        # typed, but doesn't populate them — Django just excludes readonly
+        # fields from the form entirely, leaving the model instance's
+        # default (blank/None) untouched. Derive both from obj.variacao
+        # here, unconditionally, whenever a variacao is set: this is what
+        # actually fills them in on creation, and re-asserts them on every
+        # edit save too (idempotent today, since variacao is already
+        # readonly on edit — see ITEM_PEDIDO_CAMPOS_FK_SEM_VALIDACAO_NA_
+        # EDICAO above — so this can't be re-deriving from a *different*
+        # variacao than the one already on record). Mirrors how
+        # ItemPedidoViewSet.perform_create() derives the same two fields
+        # from variacao at the API level.
+        if obj.variacao_id:
+            obj.produto_nome = obj.variacao.produto.nome
+            obj.produto_tamanho = obj.variacao.tamanho
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(Endereco)

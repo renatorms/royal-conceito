@@ -13,9 +13,6 @@ class EnderecoSerializer(serializers.ModelSerializer):
 
 
 class ItemPedidoSerializer(serializers.ModelSerializer):
-    produto_nome = serializers.CharField(source="variacao.produto.nome", read_only=True)
-    produto_tamanho = serializers.CharField(source="variacao.tamanho", read_only=True)
-
     class Meta:
         model = ItemPedido
         fields = [
@@ -28,7 +25,23 @@ class ItemPedidoSerializer(serializers.ModelSerializer):
             "preco_unitario",
             "subtotal",
         ]
-        read_only_fields = ["subtotal", "preco_unitario"]
+        # produto_nome/produto_tamanho used to be declared above as
+        # serializers.CharField(source="variacao.produto.nome"/"variacao.
+        # tamanho", read_only=True) — derived live from the *current*
+        # Variacao/Produto on every read, not from ItemPedido's own columns.
+        # That meant editing a Variacao's produto or tamanho after the sale
+        # silently rewrote how every past order that sold it was displayed,
+        # even though the sale itself never changed (see CLAUDE.md for the
+        # incident this caused). Both are now real ItemPedido columns,
+        # frozen once at creation time in ItemPedidoViewSet.perform_create()
+        # and the itens_criacao loop in PedidoViewSet.perform_create() —
+        # DRF's ModelSerializer picks them up automatically from Meta.model
+        # now that they're real fields, no explicit declaration needed; the
+        # field names in the API response are unchanged, so no frontend
+        # change was needed either. read_only for the same reason as
+        # preco_unitario/subtotal: always set by the backend, never by the
+        # client.
+        read_only_fields = ["subtotal", "preco_unitario", "produto_nome", "produto_tamanho"]
 
 
 class ItemPedidoCriacaoSerializer(serializers.Serializer):
