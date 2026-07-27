@@ -41,6 +41,15 @@ class PedidoAdmin(admin.ModelAdmin):
     list_filter = ["status", "data_pedido"]
     search_fields = ["usuario__username"]
     inlines = [ItemPedidoInline]
+    # Same reasoning as ITEM_PEDIDO_CAMPOS_CALCULADOS above — total is
+    # always server-computed (the atualiza_total_pedido signal, as the sum
+    # of ItemPedido.subtotal) and read_only on PedidoSerializer. Unlike
+    # preco_unitario, this can be a plain unconditional readonly_fields
+    # entry rather than get_readonly_fields(obj=None): Pedido.total has
+    # default=0 (pedidos/models.py), so excluding it from the add form
+    # doesn't risk a NOT NULL failure — a brand-new Pedido has no items
+    # yet, so 0 is exactly the right value there too, not just a fallback.
+    readonly_fields = ["total"]
 
 
 @admin.register(ItemPedido)
