@@ -114,6 +114,23 @@ class PedidoAdmin(admin.ModelAdmin):
     # yet, so 0 is exactly the right value there too, not just a fallback.
     readonly_fields = ["total"]
 
+    def get_readonly_fields(self, request, obj=None):
+        # usuario/endereco: same IDOR class as Endereco.usuario (see
+        # CLAUDE.md, 24/07 and 27/07) — a staff member could otherwise
+        # reassign an existing Pedido, and its whole item history, to a
+        # different user directly through this change form, or link it to
+        # another user's saved address with zero ownership validation.
+        # Readonly only when editing an *existing* Pedido (obj is not None)
+        # — unlike most of the other conditional fixes in this file, this
+        # isn't forced by a NOT NULL constraint (both fields are
+        # null=True, blank=True on the model): it's a deliberate choice,
+        # per the user, to keep picking the customer/address a real part of
+        # creating a Pedido by hand in the admin (e.g. a phone order), while
+        # locking both down once the order exists.
+        if obj is not None:
+            return [*self.readonly_fields, "usuario", "endereco"]
+        return self.readonly_fields
+
 
 @admin.register(ItemPedido)
 class ItemPedidoAdmin(admin.ModelAdmin):

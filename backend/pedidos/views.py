@@ -177,3 +177,26 @@ class PedidoViewSet(viewsets.ModelViewSet):
                     quantidade=quantidade,
                     preco_unitario=variacao.produto.preco,
                 )
+
+    def perform_update(self, serializer):
+        # Same endereco-ownership check as perform_create() above, replicated
+        # for updates — it had never been, so a PUT/PATCH could link an
+        # existing Pedido to another user's saved address with zero
+        # validation, leaking that address's existence/contents via
+        # endereco_detalhe on every future read of the order. Checked against
+        # serializer.instance.usuario (the Pedido's *existing* owner), not
+        # self.request.user: IsDonorOrStaff lets staff edit any Pedido, and a
+        # staff member fixing a customer's order should be able to attach an
+        # address that belongs to *that customer*, not be limited to their
+        # own — same reasoning as EnderecoViewSet.perform_update() re-
+        # asserting the existing owner rather than the requester.
+        endereco = serializer.validated_data.get("endereco")
+        user = self.request.user
+        pedido_usuario = serializer.instance.usuario
+        if endereco and not user.is_staff and endereco.usuario != pedido_usuario:
+            raise PermissionDenied("Você não pode vincular a este pedido um endereço que não é seu.")
+
+        # `usuario` is read_only on PedidoSerializer, so a payload can't
+        # reassign it anyway — this is defense in depth, same pattern as
+        # EnderecoViewSet.perform_update().
+        serializer.save(usuario=pedido_usuario)

@@ -74,4 +74,10 @@ class PedidoSerializer(serializers.ModelSerializer):
             "total",
             "status",
         ]
-        read_only_fields = ["total"]
+        # `usuario` is read_only for the same reason as Endereco.usuario
+        # (pedidos/serializers.py::EnderecoSerializer) — without it, a
+        # PUT/PATCH to /api/pedidos/{id}/ could reassign an existing order
+        # (and its whole item history) to a different user's account, since
+        # IsDonorOrStaff's object-level check only confirms the caller owns
+        # the *current* Pedido, not what values the request can write.
+        read_only_fields = ["total", "usuario"]
