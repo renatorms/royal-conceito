@@ -13,6 +13,24 @@ from .models import Endereco, ItemPedido, Pedido
 # supply a value, and saving would fail with a NOT NULL constraint error.
 ITEM_PEDIDO_CAMPOS_CALCULADOS = ["preco_unitario", "subtotal"]
 
+# `quantidade` isn't server-computed like the fields above — a customer picks
+# it at checkout, and it's normal (non-read_only) input on ItemPedidoSerializer
+# and the itens_criacao entries on PedidoSerializer. The problem here is
+# narrower: diminui_estoque (pedidos/signals.py) only validates/decrements
+# stock `if created:` — editing quantidade on an *already-existing* ItemPedido
+# changes it with no stock check and no corresponding Variacao.estoque
+# adjustment at all, while calcula_subtotal/atualiza_total_pedido *do* rerun
+# on every save, so subtotal/total silently recompute to match the new
+# quantidade even though stock was never touched — a staff member could bump
+# quantidade from 1 to 33 with zero validation and zero trace that stock
+# wasn't checked. Same fix shape as ITEM_PEDIDO_CAMPOS_CALCULADOS (readonly
+# only when obj is not None — quantidade has no default and isn't nullable,
+# so making it readonly unconditionally would break creating a new item),
+# confirmed with the user this isn't a workflow they rely on: any real
+# quantity adjustment should go through the API/checkout, which validates
+# stock correctly.
+ITEM_PEDIDO_CAMPOS_SEM_VALIDACAO_NA_EDICAO = ["quantidade"]
+
 
 class ItemPedidoInline(admin.TabularInline):
     model = ItemPedido
@@ -23,15 +41,19 @@ class ItemPedidoInline(admin.TabularInline):
         # row — Django applies one readonly_fields list to the whole inline
         # formset, not per-row. In practice a Pedido shown in this admin
         # always already exists (orders come from checkout, not from this
-        # inline), so this reliably makes preco_unitario/subtotal readonly
-        # for every existing line. The trade-off: it also makes them
-        # readonly for any *new* row added via "Add another" on an existing
-        # Pedido's page, since the formset can't tell old and new rows
-        # apart — adding a line here would then hit the same NOT NULL
-        # failure described above. Acceptable per the admin's actual use
-        # (reviewing orders that already exist), not creating new ones.
+        # inline), so this reliably makes these fields readonly for every
+        # existing line. The trade-off: it also makes them readonly for any
+        # *new* row added via "Add another" on an existing Pedido's page,
+        # since the formset can't tell old and new rows apart — adding a
+        # line here would then hit the same NOT NULL failure described
+        # above. Acceptable per the admin's actual use (reviewing orders
+        # that already exist), not creating new ones.
         if obj is not None:
-            return [*self.readonly_fields, *ITEM_PEDIDO_CAMPOS_CALCULADOS]
+            return [
+                *self.readonly_fields,
+                *ITEM_PEDIDO_CAMPOS_CALCULADOS,
+                *ITEM_PEDIDO_CAMPOS_SEM_VALIDACAO_NA_EDICAO,
+            ]
         return self.readonly_fields
 
 
@@ -61,13 +83,35 @@ class ItemPedidoAdmin(admin.ModelAdmin):
         # Here `obj` is the specific ItemPedido being edited (this ModelAdmin
         # isn't an inline), so this cleanly means "existing item" vs.
         # "creating a new standalone ItemPedido" — see
-        # ITEM_PEDIDO_CAMPOS_CALCULADOS above for why only the former is
-        # readonly.
+        # ITEM_PEDIDO_CAMPOS_CALCULADOS/ITEM_PEDIDO_CAMPOS_SEM_VALIDACAO_NA_EDICAO
+        # above for why only the former is readonly.
         if obj is not None:
-            return [*self.readonly_fields, *ITEM_PEDIDO_CAMPOS_CALCULADOS]
+            return [
+                *self.readonly_fields,
+                *ITEM_PEDIDO_CAMPOS_CALCULADOS,
+                *ITEM_PEDIDO_CAMPOS_SEM_VALIDACAO_NA_EDICAO,
+            ]
         return self.readonly_fields
 
 
 @admin.register(Endereco)
 class EnderecoAdmin(admin.ModelAdmin):
     list_display = ["usuario", "rua", "cidade", "estado"]
+
+    def get_readonly_fields(self, request, obj=None):
+        # `usuario` is `read_only` on EnderecoSerializer — the fix for a real
+        # IDOR (see CLAUDE.md, 24/07): without it, a PUT/PATCH to
+        # /api/enderecos/{id}/ could reassign someone else's saved address to
+        # the requester's own account, including its whole Pedido history via
+        # Pedido.endereco. That fix only hardened the API — EnderecoAdmin had
+        # no readonly_fields at all, so a staff member could do the exact
+        # same reassignment through the admin's change form instead, same
+        # hole, different door. Readonly only when editing an *existing*
+        # Endereco (obj is not None), same as ItemPedido's fields above:
+        # `usuario` has no default and isn't nullable
+        # (models.ForeignKey(User, on_delete=models.CASCADE)), so making it
+        # readonly unconditionally would break creating a new Endereco via
+        # the admin (no way to supply a value, NOT NULL failure on save).
+        if obj is not None:
+            return [*self.readonly_fields, "usuario"]
+        return self.readonly_fields
