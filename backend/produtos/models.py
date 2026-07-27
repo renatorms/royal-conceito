@@ -45,6 +45,29 @@ class Variacao(models.Model):
     # CASCADE: variação não existe sem produto
     tamanho = models.CharField(max_length=3)
     estoque = models.IntegerField(default=0)
+    peso = models.DecimalField(max_digits=5, decimal_places=3, default=0.3)
+    altura = models.IntegerField(default=3)
+    largura = models.IntegerField(default=25)
+    comprimento = models.IntegerField(default=35)
+    # peso (kg) / altura, largura, comprimento (cm) — necessários para a
+    # futura integração com o cálculo de frete da SuperFrete (ver
+    # CLAUDE.md). Cadastrados por Variacao, não por Produto: mesmo padrão
+    # de mercado usado por Nuvemshop/Shopify — permite precisão quando
+    # necessário (uma variação P e uma XG do mesmo produto podem pesar/medir
+    # diferente), mesmo que na prática a maioria das variações de um mesmo
+    # produto acabe usando valores parecidos. altura/largura/comprimento
+    # são IntegerField, não DecimalField: embalagem de frete normalmente é
+    # medida/declarada em cm inteiros (mesma convenção usada por
+    # Correios/Melhor Envio/SuperFrete), sem necessidade real de precisão
+    # sub-centimétrica; peso usa DecimalField(decimal_places=3) porque
+    # gramas fazem diferença real no cálculo de frete. default, não
+    # null=True: frete sempre precisa de algum valor pra calcular, então um
+    # valor aproximado é melhor que ausência de dado. Os padrões
+    # (0.3kg, 3×25×35cm) são um envelope/pacote típico pra roupa dobrada —
+    # placeholder temporário até o cliente confirmar os valores reais por
+    # produto; nenhuma Variacao existente no banco tinha esse dado antes
+    # desta migration, então todas ficam com esse valor aproximado até
+    # serem ajustadas manualmente no admin.
 
     class Meta:
         verbose_name = "Variação"

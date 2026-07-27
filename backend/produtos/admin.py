@@ -18,7 +18,11 @@ class CategoriaAdmin(admin.ModelAdmin):
 class VariacaoInline(admin.TabularInline):
     model = Variacao
     extra = 3
-    fields = ["tamanho", "estoque"]
+    fields = ["tamanho", "estoque", "peso", "altura", "largura", "comprimento"]
+    # peso/altura/largura/comprimento (see the Variacao model comment) are
+    # real, correctable measurements, not derived/protected data like
+    # tamanho — no readonly concern for them, editable here on both existing
+    # and new rows, same as estoque.
     # `produto` isn't in `fields` above, but that alone doesn't make it
     # readonly for an *existing* row — it's simply never shown here at all,
     # for any row, existing or new: Django's InlineModelAdmin auto-excludes
@@ -54,6 +58,17 @@ class VariacaoAdmin(admin.ModelAdmin):
     list_display = ["produto", "tamanho", "estoque"]
     list_filter = ["produto__categoria", "tamanho"]
     search_fields = ["produto__nome"]
+    # peso/altura/largura/comprimento (see the Variacao model comment) are
+    # visible/editable on the add/change form (not restricted here — this
+    # ModelAdmin doesn't set `fields`, so every model field shows up there
+    # by default), but deliberately not added to list_display/list_editable
+    # alongside estoque: estoque is a live operational number that changes
+    # with every sale/restock, so a fast, no-page-load edit from the
+    # changelist genuinely matters; peso/dimensões are physical measurements
+    # set once and rarely revisited — better suited to the full change form,
+    # where all four show together with labels, than a cramped, easy-to-
+    # fat-finger list-view cell for numbers that feed a real shipping-cost
+    # calculation.
     list_editable = ["estoque"]
 
     def get_readonly_fields(self, request, obj=None):

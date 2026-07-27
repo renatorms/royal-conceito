@@ -20,7 +20,24 @@ class VariacaoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Variacao
-        fields = ["id", "produto", "produto_nome", "tamanho", "estoque"]
+        # peso/altura/largura/comprimento are writable (not read_only): these
+        # are real physical measurements the client should be able to
+        # correct once known, not something the backend derives — unlike
+        # e.g. ItemPedido.preco_unitario. They currently ship with a
+        # temporary placeholder default (see the Variacao model comment) for
+        # the future SuperFrete shipping-cost integration; nothing consumes
+        # them yet.
+        fields = [
+            "id",
+            "produto",
+            "produto_nome",
+            "tamanho",
+            "estoque",
+            "peso",
+            "altura",
+            "largura",
+            "comprimento",
+        ]
 
 
 class ProdutoSerializer(serializers.ModelSerializer):
