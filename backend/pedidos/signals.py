@@ -1,6 +1,7 @@
 from django.db import transaction
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
+from rest_framework.exceptions import ValidationError
 
 from .models import ItemPedido
 
@@ -18,9 +19,19 @@ def diminui_estoque(sender, instance, created, **kwargs):
 
         # Valida se tem estoque suficiente
         if variacao.estoque < instance.quantidade:
-            raise ValueError(
-                f"Estoque insuficiente para {variacao.produto.nome} - {variacao.tamanho}! "
-                f"Disponível: {variacao.estoque}, Solicitado: {instance.quantidade}"
+            # `detail` is passed as a dict (not a bare string) so DRF's
+            # exception_handler serializes this as {"detail": "..."} instead
+            # of coercing it into a bare list (ValidationError.__init__ does
+            # that for any non-dict/non-list detail) — matches the
+            # {"detail": ...} shape every other error in this API already
+            # uses (see PermissionDenied usages in views.py), which is what
+            # the frontend's error handling expects.
+            raise ValidationError(
+                {
+                    "detail": (
+                        f"Estoque insuficiente. Restam apenas {variacao.estoque} unidades."
+                    )
+                }
             )
 
         variacao.estoque -= instance.quantidade

@@ -1,5 +1,5 @@
 from rest_framework import viewsets
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 
 from .models import Endereco, ItemPedido, Pedido
@@ -48,6 +48,24 @@ class ItemPedidoViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Você não pode adicionar itens a um pedido que não é seu.")
 
         variacao = serializer.validated_data["variacao"]
+        quantidade = serializer.validated_data["quantidade"]
+
+        # Authoritative check: ATOMIC_REQUESTS is off, so an ItemPedido INSERT
+        # commits immediately on .save(), before the post_save signal (and
+        # its own separate @transaction.atomic block) even runs — raising
+        # ValidationError from within the signal returns a clean 400, but the
+        # invalid row itself is already committed by then (orphaned, never
+        # reflected in Pedido.total since diminui_estoque's exception stops
+        # atualiza_total_pedido from running). Checking here, before
+        # serializer.save() is ever called, prevents the row from being
+        # created at all. The signal's own check stays in place as a
+        # defense-in-depth backstop for creation paths that don't go through
+        # this view (e.g. the Django admin's ItemPedidoInline).
+        if variacao.estoque < quantidade:
+            raise ValidationError(
+                {"detail": f"Estoque insuficiente. Restam apenas {variacao.estoque} unidades."}
+            )
+
         serializer.save(preco_unitario=variacao.produto.preco)
 
 
