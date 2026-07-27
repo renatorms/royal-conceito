@@ -1,3 +1,4 @@
+from django import forms
 from django.contrib import admin
 
 from .models import Endereco, ItemPedido, Pedido
@@ -49,8 +50,30 @@ ITEM_PEDIDO_CAMPOS_SEM_VALIDACAO_NA_EDICAO = ["quantidade"]
 ITEM_PEDIDO_CAMPOS_FK_SEM_VALIDACAO_NA_EDICAO = ["pedido", "variacao"]
 
 
+class ItemPedidoForm(forms.ModelForm):
+    # Purely cosmetic, isolated from the data-integrity fix above: on the
+    # *add* form, preco_unitario/subtotal are still editable — they only
+    # become readonly_fields on edit (obj is not None) — so they still
+    # render as the DecimalField default NumberInput there, spinner arrows
+    # and all, which look bad on currency values. TextInput only changes
+    # the rendering; Decimal validation still comes from the model field
+    # itself (ItemPedido.preco_unitario/subtotal), untouched here. Has no
+    # effect once a field is actually readonly: readonly_fields excludes it
+    # from form.fields entirely, so no widget from this Meta is ever used
+    # for it in that case — nothing to guard against here, Django already
+    # handles it.
+    class Meta:
+        model = ItemPedido
+        fields = "__all__"
+        widgets = {
+            "preco_unitario": forms.TextInput(),
+            "subtotal": forms.TextInput(),
+        }
+
+
 class ItemPedidoInline(admin.TabularInline):
     model = ItemPedido
+    form = ItemPedidoForm
     extra = 0
 
     def get_readonly_fields(self, request, obj=None):
@@ -94,6 +117,7 @@ class PedidoAdmin(admin.ModelAdmin):
 
 @admin.register(ItemPedido)
 class ItemPedidoAdmin(admin.ModelAdmin):
+    form = ItemPedidoForm
     list_display = ["pedido", "variacao", "quantidade", "preco_unitario", "subtotal"]
     list_filter = ["pedido__status"]
 
