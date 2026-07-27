@@ -68,26 +68,40 @@ class ItemPedidoViewSet(viewsets.ModelViewSet):
         if not user.is_staff and pedido.usuario != user:
             raise PermissionDenied("Você não pode adicionar itens a um pedido que não é seu.")
 
-        variacao = serializer.validated_data["variacao"]
+        variacao_id = serializer.validated_data["variacao"].pk
         quantidade = serializer.validated_data["quantidade"]
 
-        # Authoritative check: ATOMIC_REQUESTS is off, so an ItemPedido INSERT
-        # commits immediately on .save(), before the post_save signal (and
-        # its own separate @transaction.atomic block) even runs — raising
-        # ValidationError from within the signal returns a clean 400, but the
-        # invalid row itself is already committed by then (orphaned, never
+        # Authoritative check, inside transaction.atomic(): ATOMIC_REQUESTS is
+        # off, so without this wrap an ItemPedido INSERT commits immediately
+        # on .save(), before the post_save signal (and its own separate
+        # @transaction.atomic block) even runs — raising ValidationError from
+        # within the signal would return a clean 400, but the invalid row
+        # itself would already be committed by then (orphaned, never
         # reflected in Pedido.total since diminui_estoque's exception stops
-        # atualiza_total_pedido from running). Checking here, before
-        # serializer.save() is ever called, prevents the row from being
-        # created at all. The signal's own check stays in place as a
-        # defense-in-depth backstop for creation paths that don't go through
-        # this view (e.g. the Django admin's ItemPedidoInline).
-        if variacao.estoque < quantidade:
-            raise ValidationError(
-                {"detail": f"Estoque insuficiente. Restam apenas {variacao.estoque} unidades."}
-            )
+        # atualiza_total_pedido from running). Wrapping the check *and* the
+        # save in one atomic() block means a rejection anywhere inside it —
+        # including from the signal's own backstop check, e.g. if this
+        # request loses a race against a concurrent one for the same
+        # Variacao — rolls back the INSERT too, so no orphaned row survives
+        # either way.
+        #
+        # select_for_update() re-fetches rather than trusting
+        # serializer.validated_data["variacao"] (resolved once, up front,
+        # during is_valid(), with no lock): it locks the row for the rest of
+        # this transaction on backends that support it (not SQLite — see
+        # signals.py::diminui_estoque, which re-decrements via an atomic
+        # conditional UPDATE regardless, since that lock is a no-op here in
+        # dev). The signal's own check stays in place as a defense-in-depth
+        # backstop for creation paths that don't go through this view (e.g.
+        # the Django admin's ItemPedidoInline).
+        with transaction.atomic():
+            variacao = Variacao.objects.select_for_update().get(pk=variacao_id)
+            if variacao.estoque < quantidade:
+                raise ValidationError(
+                    {"detail": f"Estoque insuficiente. Restam apenas {variacao.estoque} unidades."}
+                )
 
-        serializer.save(preco_unitario=variacao.produto.preco)
+            serializer.save(preco_unitario=variacao.produto.preco)
 
 
 class PedidoViewSet(viewsets.ModelViewSet):
@@ -121,14 +135,18 @@ class PedidoViewSet(viewsets.ModelViewSet):
             pedido = serializer.instance
 
             for item in itens_data:
-                # Re-fetch rather than trust the PrimaryKeyRelatedField
-                # instance from validated_data: that was resolved once,
-                # up front, when the whole payload was validated. If the
-                # same variacao appears twice in itens_criacao, the second
-                # occurrence must see the first occurrence's decrement
-                # (applied a few lines below, inside this same transaction)
-                # — not the pre-request stock level.
-                variacao = Variacao.objects.get(pk=item["variacao"].pk)
+                # select_for_update() rather than trusting the
+                # PrimaryKeyRelatedField instance from validated_data: that
+                # was resolved once, up front, when the whole payload was
+                # validated, with no lock. Re-fetching (locked, on backends
+                # that support it — see signals.py::diminui_estoque for why
+                # SQLite doesn't) is what makes a repeated variacao id within
+                # this same itens_criacao batch see the previous line's
+                # decrement rather than the pre-request stock level; it's
+                # also what the outer-scope race (a *different* request
+                # competing for the same Variacao) needs, on backends where
+                # the lock actually holds.
+                variacao = Variacao.objects.select_for_update().get(pk=item["variacao"].pk)
                 quantidade = item["quantidade"]
 
                 # Same authoritative-check-before-create pattern as
