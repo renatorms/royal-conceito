@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useCart } from "@/contexts/CartContext";
 import { enderecoSchema } from "@/schemas/enderecoSchema";
 import { listarEnderecos, criarEndereco } from "@/api/enderecos";
-import { criarPedido, criarItemPedido, deletarPedido } from "@/api/pedidos";
+import { criarPedido } from "@/api/pedidos";
 import { applyApiErrors } from "@/lib/apiErrors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -115,38 +115,20 @@ export default function Checkout() {
       }
     }
 
-    let pedido;
     try {
-      pedido = await criarPedido({ endereco: enderecoId });
-    } catch (error) {
-      setErroGeral(
-        error.response?.data?.detail || "Não foi possível criar o pedido. Tente novamente."
-      );
-      setEnviando(false);
-      return;
-    }
-
-    try {
-      for (const item of itens) {
-        await criarItemPedido({
-          pedido: pedido.id,
-          variacao: item.variacaoId,
-          quantidade: item.quantidade,
-        });
-      }
+      // Pedido + every ItemPedido line are created together in one backend
+      // DB transaction (see criarPedido() and CLAUDE.md) — no orphaned
+      // Pedido possible if a line fails (e.g. insufficient stock), so
+      // there's no rollback call to make here.
+      const pedido = await criarPedido({
+        endereco: enderecoId,
+        itens: itens.map((item) => ({ variacao: item.variacaoId, quantidade: item.quantidade })),
+      });
 
       pedidoConfirmadoRef.current = true;
       limparCarrinho();
       navigate("/pedido-confirmado", { replace: true, state: { pedidoId: pedido.id } });
     } catch (error) {
-      // Item falhou no meio do loop — o Pedido ficou órfão. Tenta desfazer
-      // (ver CLAUDE.md para o porquê de não ser atômico no backend).
-      try {
-        await deletarPedido(pedido.id);
-      } catch {
-        // ignora — cleanup best-effort
-      }
-
       setErroGeral(
         error.response?.data?.detail ||
           "Não foi possível concluir o pedido. Verifique se os itens do carrinho ainda têm estoque disponível e tente novamente."

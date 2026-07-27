@@ -1,7 +1,10 @@
+from django.db import transaction
 from django.db.models.deletion import ProtectedError
 from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
+
+from produtos.models import Variacao
 
 from .models import Endereco, ItemPedido, Pedido
 from .permissions import IsDonorOrStaff, IsItemDonorOrStaff
@@ -104,4 +107,55 @@ class PedidoViewSet(viewsets.ModelViewSet):
         if endereco and not user.is_staff and endereco.usuario != user:
             raise PermissionDenied("Você não pode vincular a este pedido um endereço que não é seu.")
 
-        serializer.save(usuario=self.request.user)
+        # Optional atomic path: POST /pedidos/ with an `itens_criacao` list
+        # creates the Pedido and every ItemPedido line in a single DB
+        # transaction. Popped out of validated_data before serializer.save()
+        # because it isn't a real Pedido field — PedidoSerializer.create()
+        # (ModelSerializer's default) would otherwise pass it straight to
+        # Pedido.objects.create(**validated_data) and blow up on an
+        # unexpected keyword argument.
+        itens_data = serializer.validated_data.pop("itens_criacao", [])
+
+        with transaction.atomic():
+            serializer.save(usuario=self.request.user)
+            pedido = serializer.instance
+
+            for item in itens_data:
+                # Re-fetch rather than trust the PrimaryKeyRelatedField
+                # instance from validated_data: that was resolved once,
+                # up front, when the whole payload was validated. If the
+                # same variacao appears twice in itens_criacao, the second
+                # occurrence must see the first occurrence's decrement
+                # (applied a few lines below, inside this same transaction)
+                # — not the pre-request stock level.
+                variacao = Variacao.objects.get(pk=item["variacao"].pk)
+                quantidade = item["quantidade"]
+
+                # Same authoritative-check-before-create pattern as
+                # ItemPedidoViewSet.perform_create() (see the comment there
+                # for why the check has to happen before creating the row,
+                # not only inside the diminui_estoque signal). Here the
+                # outer transaction.atomic() would actually catch that case
+                # too — raising anywhere in this block, including from
+                # inside the signal, rolls back the whole Pedido along with
+                # every ItemPedido and stock decrement already applied in
+                # this loop — but checking explicitly first keeps the two
+                # creation paths consistent and gives a message naming the
+                # specific item, useful here since a batch can fail on any
+                # one of several lines.
+                if variacao.estoque < quantidade:
+                    raise ValidationError(
+                        {
+                            "detail": (
+                                f"Estoque insuficiente para {variacao.produto.nome} - "
+                                f"{variacao.tamanho}. Restam apenas {variacao.estoque} unidades."
+                            )
+                        }
+                    )
+
+                ItemPedido.objects.create(
+                    pedido=pedido,
+                    variacao=variacao,
+                    quantidade=quantidade,
+                    preco_unitario=variacao.produto.preco,
+                )

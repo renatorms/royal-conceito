@@ -1,19 +1,40 @@
 import api from "@/lib/axios";
 
-// PedidoSerializer exposes `itens` as read_only, so there's no single endpoint
-// that creates a Pedido together with its ItemPedido lines — the API only
-// supports creating the Pedido first, then one POST /itens/ per cart line
-// referencing the returned pedido.id.
-export async function criarPedido({ endereco } = {}) {
-  const { data } = await api.post("/pedidos/", endereco ? { endereco } : {});
+// PedidoSerializer accepts a write-only `itens_criacao` list alongside the
+// read-only `itens`, so a single POST /pedidos/ creates the Pedido and every
+// ItemPedido line together inside one backend DB transaction (see
+// PedidoViewSet.perform_create() and CLAUDE.md) — no partial/orphaned Pedido
+// possible if one line fails (e.g. insufficient stock on line 2), unlike the
+// old "create empty Pedido, then loop POST /itens/" flow this replaced.
+// `itens` is optional and omitted entirely (not sent as `[]`) when not
+// passed, so a bare `criarPedido({ endereco })` still creates an empty
+// Pedido exactly like before — that path is still exercised by the backend
+// itself (e.g. the Django admin) and intentionally still supported.
+export async function criarPedido({ endereco, itens } = {}) {
+  const payload = {};
+  if (endereco) payload.endereco = endereco;
+  if (itens && itens.length > 0) {
+    payload.itens_criacao = itens.map(({ variacao, quantidade }) => ({ variacao, quantidade }));
+  }
+
+  const { data } = await api.post("/pedidos/", payload);
   return data;
 }
 
+// Unused by the UI now that criarPedido() creates every line atomically, but
+// POST /itens/ itself is still live (and still needed for it) — kept as a
+// direct binding in case a future feature needs to add a single line to an
+// already-existing Pedido (this endpoint doesn't require the Pedido to be
+// empty/new).
 export async function criarItemPedido({ pedido, variacao, quantidade }) {
   const { data } = await api.post("/itens/", { pedido, variacao, quantidade });
   return data;
 }
 
+// Unused by Checkout.jsx now that order creation is atomic (no more orphaned
+// Pedido to roll back on a mid-loop failure) — kept as a direct binding
+// since DELETE /pedidos/{id}/ is still a real, supported endpoint and this
+// is likely useful for a future "cancelar pedido" feature.
 export async function deletarPedido(id) {
   await api.delete(`/pedidos/${id}/`);
 }
