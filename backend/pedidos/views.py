@@ -1,14 +1,31 @@
+import logging
+
 from django.db import transaction
 from django.db.models.deletion import ProtectedError
-from rest_framework import viewsets
-from rest_framework.exceptions import PermissionDenied, ValidationError
-from rest_framework.permissions import IsAuthenticated
+from rest_framework import status, viewsets
+from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from produtos.models import Variacao
 
 from .models import Endereco, ItemPedido, Pedido
 from .permissions import IsDonorOrStaff, IsItemDonorOrStaff
-from .serializers import EnderecoSerializer, ItemPedidoSerializer, PedidoSerializer
+from .serializers import (
+    EnderecoSerializer,
+    FreteCalcularSerializer,
+    ItemPedidoSerializer,
+    PedidoSerializer,
+)
+from .services.superfrete import (
+    SuperFreteConfiguracaoError,
+    SuperFreteDestinoInvalidoError,
+    SuperFreteIndisponivelError,
+    calcular_frete,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class EnderecoViewSet(viewsets.ModelViewSet):
@@ -214,3 +231,69 @@ class PedidoViewSet(viewsets.ModelViewSet):
         # reassign it anyway — this is defense in depth, same pattern as
         # EnderecoViewSet.perform_update().
         serializer.save(usuario=pedido_usuario)
+
+
+class ServicoIndisponivel(APIException):
+    # Plain APIException defaults to a 500; a failed *external* dependency
+    # (SuperFrete down, our own token misconfigured, a network blip) is a
+    # 503 — not a bug in this API, and not the client's fault either, so
+    # distinct from both ValidationError (400, client's input) and an
+    # unhandled 500 (our own bug).
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    default_code = "servico_indisponivel"
+
+
+class FreteCalcularView(APIView):
+    # Público (AllowAny, not the project's default IsAuthenticated) —
+    # deliberate: shipping cost needs to be visible in the cart before a
+    # visitor logs in (Carrinho.jsx is itself a public route), and this
+    # endpoint doesn't read or write anything user-specific — only
+    # Variacao's own weight/dimensions/price, already public data (GET
+    # /api/produtos/ is public too). The one real risk of leaving it public
+    # is abuse: each call is a real request against SuperFrete's API using
+    # our token, so it's throttled the same way /api/token/ and
+    # /api/registro/ already are (public + a cost/abuse surface) — see
+    # DEFAULT_THROTTLE_RATES in core/settings.py.
+    permission_classes = [AllowAny]
+    throttle_scope = "frete"
+
+    def post(self, request):
+        serializer = FreteCalcularSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        produtos = [
+            {
+                "altura": item["variacao"].altura,
+                "largura": item["variacao"].largura,
+                "comprimento": item["variacao"].comprimento,
+                "peso": item["variacao"].peso,
+                "quantidade": item["quantidade"],
+                "valor": item["variacao"].produto.preco,
+            }
+            for item in serializer.validated_data["itens"]
+        ]
+
+        # Each SuperFreteError subclass gets a distinct, deliberately-chosen
+        # response — see pedidos/services/superfrete.py for why they're
+        # split this way. The raw exception (which may include SuperFrete's
+        # own response body) is only ever logged, never put in the response
+        # body sent to the client.
+        try:
+            opcoes = calcular_frete(serializer.validated_data["cep_destino"], produtos)
+        except SuperFreteDestinoInvalidoError as exc:
+            logger.info("Frete: CEP de destino rejeitado pela SuperFrete: %s", exc)
+            raise ValidationError(
+                {"detail": "CEP de destino inválido ou fora da área de cobertura."}
+            )
+        except (SuperFreteConfiguracaoError, SuperFreteIndisponivelError) as exc:
+            logger.error("Frete: falha ao calcular frete via SuperFrete: %s", exc)
+            raise ServicoIndisponivel(
+                {
+                    "detail": (
+                        "Não foi possível calcular o frete no momento. "
+                        "Tente novamente em instantes."
+                    )
+                }
+            )
+
+        return Response(opcoes)

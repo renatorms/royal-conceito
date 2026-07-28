@@ -160,5 +160,28 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "login": "5/min",
         "registro": "5/min",
+        # Public (AllowAny — see pedidos/views.py::FreteCalcularView) and
+        # each call is a real request against SuperFrete's API using our
+        # token, so it needs the same public+throttled treatment as
+        # login/registro above. 20/min is generous for legitimate use
+        # (re-quoting after a CEP/cart change during one checkout session)
+        # while still bounding how much of our SuperFrete quota an
+        # unauthenticated client can burn through.
+        "frete": "20/min",
     },
 }
+
+# SuperFrete (cálculo de frete) — see pedidos/services/superfrete.py
+SUPERFRETE_TOKEN = config("SUPERFRETE_TOKEN", default="")
+# Sem hífen (8 dígitos) — formato exigido pela API da SuperFrete
+# (confirmado via requisição real contra o sandbox), não o formato com
+# hífen usado nas telas do checkout (ex: "72017-212").
+SUPERFRETE_CEP_ORIGEM = config("SUPERFRETE_CEP_ORIGEM", default="")
+# Sandbox/produção usam hosts diferentes (não apenas paths) — mesmo padrão
+# já usado em CORS_ALLOW_ALL_ORIGINS acima: o ambiente (DEBUG) decide, sem
+# precisar de mais uma variável de ambiente separada. O token do sandbox
+# (hoje em .env) não funciona contra a URL de produção nem vice-versa, então
+# os dois já precisam estar sincronizados manualmente ao trocar de ambiente.
+SUPERFRETE_BASE_URL = (
+    "https://sandbox.superfrete.com" if DEBUG else "https://api.superfrete.com"
+)

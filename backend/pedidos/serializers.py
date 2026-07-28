@@ -60,6 +60,28 @@ class ItemPedidoCriacaoSerializer(serializers.Serializer):
     quantidade = serializers.IntegerField(min_value=1)
 
 
+class FreteItemSerializer(serializers.Serializer):
+    """One cart line for POST /frete/calcular/. Deliberately not shared with
+    ItemPedidoCriacaoSerializer above despite today's identical shape: this
+    one is never used to create anything, only to look up a Variacao's
+    weight/dimensions/price for a shipping quote — a future change to
+    order-item creation input shouldn't accidentally affect the freight
+    endpoint, or vice versa."""
+
+    variacao = serializers.PrimaryKeyRelatedField(queryset=Variacao.objects.all())
+    quantidade = serializers.IntegerField(min_value=1)
+
+
+class FreteCalcularSerializer(serializers.Serializer):
+    """Input shape for POST /frete/calcular/. `cep_destino` accepts either
+    "01153-000" or "01153000" — pedidos/services/superfrete.py strips
+    non-digits before sending it to the SuperFrete API, so validation here
+    only checks a plausible length, not the exact format."""
+
+    cep_destino = serializers.CharField(max_length=9, min_length=8)
+    itens = FreteItemSerializer(many=True, allow_empty=False)
+
+
 class PedidoSerializer(serializers.ModelSerializer):
     itens = ItemPedidoSerializer(many=True, read_only=True)
     # Write-only counterpart to `itens`: lets POST /pedidos/ create the order
