@@ -6,10 +6,13 @@ import api from "@/lib/axios";
 // PedidoViewSet.perform_create() and CLAUDE.md) — no partial/orphaned Pedido
 // possible if one line fails (e.g. insufficient stock on line 2), unlike the
 // old "create empty Pedido, then loop POST /itens/" flow this replaced.
-// `itens` is optional and omitted entirely (not sent as `[]`) when not
-// passed, so a bare `criarPedido({ endereco })` still creates an empty
-// Pedido exactly like before — that path is still exercised by the backend
-// itself (e.g. the Django admin) and intentionally still supported.
+// `itens` is technically an optional param on this function, but the backend
+// now rejects a create request with an empty/missing `itens_criacao` (400,
+// "Um pedido precisa ter pelo menos um item.") — the old empty-Pedido path is
+// gone, since Checkout.jsx (the only caller) always has a non-empty cart by
+// the time it calls this, and the Django admin never went through this API
+// to begin with (it creates Pedido + ItemPedido together via its own
+// form/inline). A bare `criarPedido({ endereco })` would now fail.
 // `frete` is the whole option object returned by calcularFrete() ({id, nome,
 // transportadora, preco, prazo_dias}) — sent as-is under `frete_selecionado`,
 // PedidoSerializer only reads the four sub-fields it actually freezes onto

@@ -144,19 +144,45 @@ class PedidoViewSet(viewsets.ModelViewSet):
         return Pedido.objects.filter(usuario=user)
 
     def perform_create(self, serializer):
+        # A Pedido with zero items used to be reachable on purpose (the old
+        # "create empty, then POST /itens/ per line" flow, replaced by the
+        # atomic itens_criacao path below). Now that every real caller always
+        # sends items — Checkout.jsx always has a non-empty cart by the time
+        # it calls this, and the Django admin creates Pedido + ItemPedido
+        # together through its own form/inline, never through this API — an
+        # empty/missing itens_criacao is a leftover gap, not a use case, so
+        # it's rejected outright before anything is created.
+        #
+        # Checked here, first thing, rather than as `required=True,
+        # allow_empty=False` on PedidoSerializer.itens_criacao: that field is
+        # also used by updates (where it's legitimately absent — see
+        # perform_update(), which never touches it), so the field itself has
+        # to stay optional; the non-empty rule only applies to creation.
+        # Also checked here rather than in the serializer's own validate()
+        # (tried first, reverted): DRF's as_serializer_error() always wraps a
+        # dict-shaped ValidationError raised inside a serializer's validate()
+        # into `{"detail": [...]}` — a list — instead of the bare
+        # `{"detail": "..."}` string every other error in this API uses;
+        # raising directly in the view, like the stock checks below already
+        # do, avoids that wrapping and keeps the shape consistent (confirmed
+        # via curl — see CLAUDE.md).
+        itens_data = serializer.validated_data.pop("itens_criacao", None)
+        if not itens_data:
+            raise ValidationError({"detail": "Um pedido precisa ter pelo menos um item."})
+
         endereco = serializer.validated_data.get("endereco")
         user = self.request.user
         if endereco and not user.is_staff and endereco.usuario != user:
             raise PermissionDenied("Você não pode vincular a este pedido um endereço que não é seu.")
 
-        # Optional atomic path: POST /pedidos/ with an `itens_criacao` list
-        # creates the Pedido and every ItemPedido line in a single DB
-        # transaction. Popped out of validated_data before serializer.save()
-        # because it isn't a real Pedido field — PedidoSerializer.create()
-        # (ModelSerializer's default) would otherwise pass it straight to
+        # POST /pedidos/ creates the Pedido and every ItemPedido line in a
+        # single DB transaction. `itens_data` is guaranteed non-empty here —
+        # the check above already rejected an empty/missing list. Popped out
+        # of validated_data before serializer.save() because it isn't a real
+        # Pedido field — PedidoSerializer.create() (ModelSerializer's
+        # default) would otherwise pass it straight to
         # Pedido.objects.create(**validated_data) and blow up on an
         # unexpected keyword argument.
-        itens_data = serializer.validated_data.pop("itens_criacao", [])
 
         # Same shape as itens_data above: frete_selecionado isn't a real
         # Pedido field either (it's the write-only nested option the client
@@ -234,12 +260,10 @@ class PedidoViewSet(viewsets.ModelViewSet):
             # Each ItemPedido.objects.create() above already re-triggers
             # atualiza_total_pedido (post_save signal), which recomputes
             # total from frete_valor already set on this same `pedido`
-            # instance — so this call is redundant whenever itens_data is
-            # non-empty. It's not redundant when frete_selecionado was sent
-            # but itens_criacao wasn't (an empty-Pedido-with-freight
-            # request): no ItemPedido is created, so no signal ever fires,
-            # and total would otherwise stay at 0 despite frete_valor being
-            # set. Cheap and idempotent either way.
+            # instance — so, now that itens_data is always non-empty (see
+            # the check at the top of this method), this call is always
+            # redundant on the create path. Kept anyway: cheap, idempotent,
+            # and a harmless safety net rather than something worth deleting.
             recalcula_total_pedido(pedido)
 
     def perform_update(self, serializer):

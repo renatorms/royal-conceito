@@ -108,9 +108,19 @@ class PedidoSerializer(serializers.ModelSerializer):
     # `itens` is a nested ItemPedidoSerializer built for *reading* an already
     # -persisted line (id, produto_nome, subtotal, ...) — reusing it for input
     # would require a pedido that doesn't exist yet and accept fields clients
-    # must never set (preco_unitario, subtotal). Optional/defaults to empty,
-    # so the old "POST /pedidos/ empty, then POST /itens/ per line" flow keeps
-    # working unchanged.
+    # must never set (preco_unitario, subtotal). `required=False` here is
+    # about *updates*, not creation: PATCH/PUT never touches this field (see
+    # PedidoViewSet.perform_update()), so it must stay optional for those to
+    # keep working. On creation, PedidoViewSet.perform_create() rejects an
+    # empty/missing list outright (a Pedido with zero items is no longer a
+    # reachable state via this API) — done there rather than as
+    # `required=True, allow_empty=False` on the field itself (which would
+    # also wrongly apply to updates), and rather than in this serializer's
+    # own validate() (tried first, reverted: DRF's as_serializer_error()
+    # always wraps a dict-shaped ValidationError raised inside a
+    # serializer's validate() into `{"detail": [...]}` — a list — breaking
+    # the bare-string `{"detail": "..."}` shape every other error in this
+    # API uses, confirmed via curl).
     itens_criacao = ItemPedidoCriacaoSerializer(many=True, write_only=True, required=False)
     endereco_detalhe = EnderecoSerializer(source="endereco", read_only=True)
     # Write-only counterpart to frete_valor/frete_nome/frete_transportadora/
