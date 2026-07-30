@@ -35,6 +35,22 @@ class Pedido(models.Model):
     data_pedido = models.DateTimeField(auto_now_add=True)
     total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="novo")
+    frete_valor = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    frete_nome = models.CharField(max_length=50, null=True, blank=True)
+    frete_transportadora = models.CharField(max_length=100, null=True, blank=True)
+    frete_prazo_dias = models.IntegerField(null=True, blank=True)
+    # Snapshot da opção de frete escolhida no checkout — congelado uma única
+    # vez na criação do Pedido (mesmo espírito de ItemPedido.preco_unitario/
+    # produto_nome, ver CLAUDE.md), nunca recalculado depois, mesmo que a
+    # cotação da SuperFrete para o mesmo destino mude no futuro. null=True,
+    # blank=True: pedidos de antes desta mudança (incluindo os que usavam o
+    # FRETE_PLACEHOLDER fixo do frontend) não têm cotação real nenhuma pra
+    # guardar, e não são preenchidos retroativamente com um valor adivinhado
+    # — mesmo princípio já usado em ItemPedido.produto_nome/produto_tamanho.
+    # `total` passa a incluir frete_valor quando presente (ver
+    # signals.py::recalcula_total_pedido) — pedidos antigos, com
+    # frete_valor=None, continuam com total = soma dos itens, sem mudança de
+    # comportamento.
 
     def __str__(self):
         return f"Pedido #{self.id} - {self.usuario}"

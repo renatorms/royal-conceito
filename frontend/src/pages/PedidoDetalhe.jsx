@@ -95,6 +95,16 @@ export default function PedidoDetalhe() {
         </div>
       )}
 
+      {pedido.frete_valor != null && (
+        <div className="mb-6">
+          <h2 className="mb-2 text-sm font-medium text-muted-foreground">Frete</h2>
+          <p className="text-sm">
+            {pedido.frete_nome} ({pedido.frete_transportadora}) — até {pedido.frete_prazo_dias}{" "}
+            dia(s) útil(eis) — {formatarPreco(pedido.frete_valor)}
+          </p>
+        </div>
+      )}
+
       <div className="flex flex-col gap-3">
         {pedido.itens.map((item) => (
           <div

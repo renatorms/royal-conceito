@@ -81,22 +81,30 @@ def diminui_estoque(sender, instance, created, **kwargs):
             )
 
 
+def recalcula_total_pedido(pedido):
+    """total = soma dos subtotais dos itens + frete_valor (quando o pedido
+    tem uma opção de frete selecionada; None é tratado como 0, então pedidos
+    sem frete_valor — todos os anteriores a essa mudança — continuam com
+    total = só itens, sem mudança de comportamento). Compartilhado pelos
+    sinais abaixo e por PedidoViewSet.perform_create() (ver CLAUDE.md), que
+    também precisa recalcular no caso de um pedido criado com frete
+    selecionado mas nenhum item na mesma chamada — caso em que nenhum sinal
+    de ItemPedido dispara."""
+    itens = pedido.itens.all()
+    total_itens = sum(item.subtotal for item in itens)
+    pedido.total = total_itens + (pedido.frete_valor or 0)
+    pedido.save()
+
+
 @receiver(post_save, sender=ItemPedido)
 @transaction.atomic
 def atualiza_total_pedido(
     sender, instance, **kwargs
 ):  # recalcula total de pedido automaticamente
-    pedido = instance.pedido
-    itens = pedido.itens.all()
-    total = sum(item.subtotal for item in itens)
-    pedido.total = total
-    pedido.save()
+    recalcula_total_pedido(instance.pedido)
 
 
 @receiver(post_delete, sender=ItemPedido)
 @transaction.atomic
 def atualiza_total_ao_deletar(sender, instance, **kwargs):
-    pedido = instance.pedido
-    itens = pedido.itens.all()
-    pedido.total = sum(item.subtotal for item in itens)
-    pedido.save()
+    recalcula_total_pedido(instance.pedido)

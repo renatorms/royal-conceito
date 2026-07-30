@@ -10,12 +10,19 @@ import api from "@/lib/axios";
 // passed, so a bare `criarPedido({ endereco })` still creates an empty
 // Pedido exactly like before — that path is still exercised by the backend
 // itself (e.g. the Django admin) and intentionally still supported.
-export async function criarPedido({ endereco, itens } = {}) {
+// `frete` is the whole option object returned by calcularFrete() ({id, nome,
+// transportadora, preco, prazo_dias}) — sent as-is under `frete_selecionado`,
+// PedidoSerializer only reads the four sub-fields it actually freezes onto
+// the Pedido (see CLAUDE.md). Optional and omitted entirely when not passed,
+// same as endereco/itens — Checkout.jsx doesn't block on a failed/unselected
+// SuperFrete quote, so a Pedido can legitimately be created with no freight.
+export async function criarPedido({ endereco, itens, frete } = {}) {
   const payload = {};
   if (endereco) payload.endereco = endereco;
   if (itens && itens.length > 0) {
     payload.itens_criacao = itens.map(({ variacao, quantidade }) => ({ variacao, quantidade }));
   }
+  if (frete) payload.frete_selecionado = frete;
 
   const { data } = await api.post("/pedidos/", payload);
   return data;

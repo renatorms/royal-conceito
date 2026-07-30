@@ -24,6 +24,7 @@ from .services.superfrete import (
     SuperFreteIndisponivelError,
     calcular_frete,
 )
+from .signals import recalcula_total_pedido
 
 logger = logging.getLogger(__name__)
 
@@ -157,8 +158,29 @@ class PedidoViewSet(viewsets.ModelViewSet):
         # unexpected keyword argument.
         itens_data = serializer.validated_data.pop("itens_criacao", [])
 
+        # Same shape as itens_data above: frete_selecionado isn't a real
+        # Pedido field either (it's the write-only nested option the client
+        # sent), so it's popped out and its four sub-values are passed as
+        # explicit save() kwargs onto the real, backend-owned columns
+        # instead — same pattern already used for preco_unitario/produto_nome
+        # in ItemPedidoViewSet.perform_create(). Omitted entirely (not just
+        # falsy) when the client didn't send a freight option — e.g. the
+        # SuperFrete quote failed and checkout proceeded without blocking
+        # (see CLAUDE.md) — leaving all four columns at their null default.
+        frete_data = serializer.validated_data.pop("frete_selecionado", None)
+        frete_kwargs = (
+            {
+                "frete_valor": frete_data["preco"],
+                "frete_nome": frete_data["nome"],
+                "frete_transportadora": frete_data["transportadora"],
+                "frete_prazo_dias": frete_data["prazo_dias"],
+            }
+            if frete_data
+            else {}
+        )
+
         with transaction.atomic():
-            serializer.save(usuario=self.request.user)
+            serializer.save(usuario=self.request.user, **frete_kwargs)
             pedido = serializer.instance
 
             for item in itens_data:
@@ -208,6 +230,17 @@ class PedidoViewSet(viewsets.ModelViewSet):
                     produto_nome=variacao.produto.nome,
                     produto_tamanho=variacao.tamanho,
                 )
+
+            # Each ItemPedido.objects.create() above already re-triggers
+            # atualiza_total_pedido (post_save signal), which recomputes
+            # total from frete_valor already set on this same `pedido`
+            # instance — so this call is redundant whenever itens_data is
+            # non-empty. It's not redundant when frete_selecionado was sent
+            # but itens_criacao wasn't (an empty-Pedido-with-freight
+            # request): no ItemPedido is created, so no signal ever fires,
+            # and total would otherwise stay at 0 despite frete_valor being
+            # set. Cheap and idempotent either way.
+            recalcula_total_pedido(pedido)
 
     def perform_update(self, serializer):
         # Same endereco-ownership check as perform_create() above, replicated

@@ -219,6 +219,11 @@ export default function Checkout() {
       const pedido = await criarPedido({
         endereco: enderecoId,
         itens: itens.map((item) => ({ variacao: item.variacaoId, quantidade: item.quantidade })),
+        // Omitted when no option is currently selected (quote still
+        // loading, failed, or returned no options) — checkout isn't
+        // blocked on it (see the "Frete" section above), so the Pedido is
+        // simply created with no freight snapshot in that case.
+        frete: freteEscolhido,
       });
 
       pedidoConfirmadoRef.current = true;

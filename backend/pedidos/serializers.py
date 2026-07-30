@@ -72,6 +72,24 @@ class FreteItemSerializer(serializers.Serializer):
     quantidade = serializers.IntegerField(min_value=1)
 
 
+class FreteSelecionadoSerializer(serializers.Serializer):
+    """Write-only shape for the freight option chosen at checkout, mirroring
+    the response shape of POST /frete/calcular/ ({id, nome, transportadora,
+    preco, prazo_dias} — see calcular_frete() in
+    pedidos/services/superfrete.py). `id` (SuperFrete's own option id) is
+    deliberately not declared here: it isn't meaningful after the sale, only
+    nome/transportadora/preco/prazo_dias are frozen onto Pedido as a
+    checkout-time snapshot (see PedidoViewSet.perform_create() and
+    CLAUDE.md). A plain (non-Model) Serializer ignores unknown input keys by
+    default, so the frontend can keep sending the whole option object as-is,
+    `id` included, with no error."""
+
+    nome = serializers.CharField(max_length=50)
+    transportadora = serializers.CharField(max_length=100)
+    preco = serializers.DecimalField(max_digits=10, decimal_places=2)
+    prazo_dias = serializers.IntegerField(min_value=0)
+
+
 class FreteCalcularSerializer(serializers.Serializer):
     """Input shape for POST /frete/calcular/. `cep_destino` accepts either
     "01153-000" or "01153000" — pedidos/services/superfrete.py strips
@@ -95,6 +113,13 @@ class PedidoSerializer(serializers.ModelSerializer):
     # working unchanged.
     itens_criacao = ItemPedidoCriacaoSerializer(many=True, write_only=True, required=False)
     endereco_detalhe = EnderecoSerializer(source="endereco", read_only=True)
+    # Write-only counterpart to frete_valor/frete_nome/frete_transportadora/
+    # frete_prazo_dias, same shape as itens_criacao above: lets POST
+    # /pedidos/ pass the chosen SuperFrete option to be frozen onto the new
+    # Pedido in one call, without exposing those four real columns as
+    # directly writable (they're backend-set only, see read_only_fields
+    # below — same rule as preco_unitario/produto_nome on ItemPedido).
+    frete_selecionado = FreteSelecionadoSerializer(write_only=True, required=False)
 
     class Meta:
         model = Pedido
@@ -108,6 +133,11 @@ class PedidoSerializer(serializers.ModelSerializer):
             "data_pedido",
             "total",
             "status",
+            "frete_selecionado",
+            "frete_valor",
+            "frete_nome",
+            "frete_transportadora",
+            "frete_prazo_dias",
         ]
         # `usuario` is read_only for the same reason as Endereco.usuario
         # (pedidos/serializers.py::EnderecoSerializer) — without it, a
@@ -115,4 +145,17 @@ class PedidoSerializer(serializers.ModelSerializer):
         # (and its whole item history) to a different user's account, since
         # IsDonorOrStaff's object-level check only confirms the caller owns
         # the *current* Pedido, not what values the request can write.
-        read_only_fields = ["total", "usuario"]
+        # frete_valor/frete_nome/frete_transportadora/frete_prazo_dias are
+        # read_only for the same reason as preco_unitario/produto_nome on
+        # ItemPedidoSerializer: always set by the backend
+        # (PedidoViewSet.perform_create(), from frete_selecionado), never by
+        # the client directly — a raw {"frete_valor": 0.01} in the payload
+        # is silently ignored, same as a forged preco_unitario would be.
+        read_only_fields = [
+            "total",
+            "usuario",
+            "frete_valor",
+            "frete_nome",
+            "frete_transportadora",
+            "frete_prazo_dias",
+        ]
