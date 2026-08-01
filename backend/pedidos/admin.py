@@ -153,8 +153,31 @@ class PedidoAdmin(admin.ModelAdmin):
         # per the user, to keep picking the customer/address a real part of
         # creating a Pedido by hand in the admin (e.g. a phone order), while
         # locking both down once the order exists.
+        #
+        # frete_valor/frete_nome/frete_transportadora/frete_prazo_dias: same
+        # class of gap, found later (see CLAUDE.md) — these four are always
+        # backend-set from frete_selecionado at checkout (read_only on
+        # PedidoSerializer) and are meant to be a frozen snapshot of the
+        # SuperFrete quote actually charged, same principle as
+        # preco_unitario/produto_nome on ItemPedido. They were added later
+        # (29/07, after this method already existed for usuario/endereco)
+        # and simply never got folded into it, so a staff member could
+        # rewrite a placed order's freight amount/carrier by hand with no
+        # validation and no recalculation of total. Same conditional shape:
+        # readonly only once the Pedido already exists, since there's no
+        # real SuperFrete integration in the Admin to auto-fill them on
+        # creation — a staff member building a phone order here has to be
+        # able to type them in by hand.
         if obj is not None:
-            return [*self.readonly_fields, "usuario", "endereco"]
+            return [
+                *self.readonly_fields,
+                "usuario",
+                "endereco",
+                "frete_valor",
+                "frete_nome",
+                "frete_transportadora",
+                "frete_prazo_dias",
+            ]
         return self.readonly_fields
 
     def save_formset(self, request, form, formset, change):
