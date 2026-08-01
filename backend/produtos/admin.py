@@ -44,6 +44,50 @@ class VariacaoInline(admin.TabularInline):
             return [*self.readonly_fields, "tamanho"]
         return self.readonly_fields
 
+    # Fixed 2026-08-01 — a real IntegrityError 500, not just a UX rough edge:
+    # once `tamanho` became readonly above (obj is not None), the 3 blank
+    # `extra` rows this inline still rendered on an *existing* Produto's page
+    # became impossible to save correctly — a readonly field renders with no
+    # <input>, so Django's ModelForm has no value to submit for it, and
+    # trying to save one of those blank rows attempts to create a Variacao
+    # with an empty tamanho. With more than one blank row present at once
+    # (extra=3), several such rows collide with each other on
+    # unique_together=["produto", "tamanho"] before the request even reaches
+    # the DB-level NOT NULL/blank check, surfacing as an unhandled 500 to a
+    # staff member who had no way of knowing those rows would never actually
+    # work. get_readonly_fields() only ever locked existing rows against
+    # being *edited* — it never addressed the inline still visually offering
+    # to create new ones through a path that was silently broken by that same
+    # fix. See get_extra()/has_add_permission() below for the fix, and
+    # CLAUDE.md for the full incident writeup.
+    def get_extra(self, request, obj=None, **kwargs):
+        # No blank rows once the parent Produto already exists — there's
+        # nothing for them to prefill successfully once tamanho is readonly,
+        # so offering them at all is a guaranteed-to-fail invitation. On a
+        # brand-new Produto, tamanho is still a real editable field (see
+        # get_readonly_fields() above), so the normal extra=3 keeps making
+        # sense there — pre-populating rows to create a product with a few
+        # sizes in one go is the actual, working use case this inline exists
+        # for in the first place.
+        if obj is not None:
+            return 0
+        return super().get_extra(request, obj, **kwargs)
+
+    def has_add_permission(self, request, obj):
+        # Belt-and-suspenders with get_extra() above, not a redundant check:
+        # get_extra()=0 removes the blank rows themselves, but Django's
+        # inline template still renders a "+ Add another Variação" link
+        # whenever this returns True (the link is what clones a fresh blank
+        # row via JS) — without also disabling it here, staff would still
+        # see a working-looking invitation to add a size that, per
+        # get_readonly_fields() above, could never actually save correctly.
+        # Creating a new size for an existing product still works — just
+        # through the standalone Variacao "Add" page instead, which has none
+        # of this inline's readonly restrictions.
+        if obj is not None:
+            return False
+        return super().has_add_permission(request, obj)
+
 
 @admin.register(Produto)
 class ProdutoAdmin(admin.ModelAdmin):
