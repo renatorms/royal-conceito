@@ -1,8 +1,10 @@
 import logging
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models.deletion import ProtectedError
 from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -17,6 +19,12 @@ from .serializers import (
     FreteCalcularSerializer,
     ItemPedidoSerializer,
     PedidoSerializer,
+)
+from .services.infinitepay import (
+    InfinitePayConfiguracaoError,
+    InfinitePayIndisponivelError,
+    criar_link_pagamento,
+    verificar_pagamento,
 )
 from .services.superfrete import (
     SuperFreteConfiguracaoError,
@@ -289,6 +297,97 @@ class PedidoViewSet(viewsets.ModelViewSet):
         # EnderecoViewSet.perform_update().
         serializer.save(usuario=pedido_usuario)
 
+    @action(detail=True, methods=["post"], url_path="gerar-link-pagamento")
+    def gerar_link_pagamento(self, request, pk=None):
+        # A separate action the frontend calls right after POST /pedidos/
+        # succeeds, not folded into perform_create() above — deliberate.
+        # Pedido creation already does the part that actually needs to be
+        # atomic and hard to retry safely (locking Variacao rows, decrementing
+        # stock, freezing preco_unitario/produto_nome — see perform_create()
+        # and CLAUDE.md). Generating a payment link is a call to a third-party
+        # API with none of that: it doesn't touch stock, isn't tied to the
+        # same DB transaction, and — like the SuperFrete quote in
+        # FreteCalcularView — can fail transiently for reasons that have
+        # nothing to do with whether the order itself is valid. Coupling the
+        # two (e.g. calling InfinitePay from inside perform_create()'s
+        # transaction.atomic() block) would mean a slow/flaky InfinitePay
+        # response either rolls back a perfectly valid, already-decremented
+        # order, or leaves the transaction open for the duration of an
+        # external HTTP call — both worse than the order existing on its own.
+        # get_object() already runs IsDonorOrStaff.has_object_permission(),
+        # so this can't be called on someone else's Pedido.
+        pedido = self.get_object()
+
+        if pedido.status != "novo":
+            # Already paid (or being handled another way, e.g. cancelado) —
+            # generating a fresh checkout link for it would be misleading at
+            # best (a second payment for an already-confirmed order) and
+            # actively wrong at worst.
+            raise ValidationError(
+                {"detail": "Este pedido não está aguardando pagamento."}
+            )
+
+        itens = [
+            {
+                "descricao": (
+                    f"{item.produto_nome} - Tam. {item.produto_tamanho}"
+                    if item.produto_nome
+                    else f"Item do pedido #{pedido.id}"
+                ),
+                "quantidade": item.quantidade,
+                # preco_unitario is a DecimalField(decimal_places=2) — already
+                # exact to the cent, so multiplying by 100 and truncating to
+                # int is exact too (no float rounding involved at any point).
+                "preco_centavos": int(item.preco_unitario * 100),
+            }
+            for item in pedido.itens.all()
+        ]
+        if pedido.frete_valor:
+            # The freight snapshot is part of Pedido.total (see
+            # recalcula_total_pedido() in signals.py) but isn't an ItemPedido
+            # — without a line for it here, the amount charged via
+            # InfinitePay would fall short of pedido.total by exactly the
+            # freight value. Included as its own line, named after the
+            # carrier/service actually chosen at checkout, same snapshot
+            # already frozen onto the Pedido.
+            itens.append(
+                {
+                    "descricao": f"Frete ({pedido.frete_nome or 'entrega'})",
+                    "quantidade": 1,
+                    "preco_centavos": int(pedido.frete_valor * 100),
+                }
+            )
+
+        try:
+            url = criar_link_pagamento(
+                order_nsu=str(pedido.id),
+                itens=itens,
+                redirect_url=f"{settings.FRONTEND_URL}/pedido-confirmado?pedidoId={pedido.id}",
+                webhook_url=f"{settings.BACKEND_URL}/api/pedidos/webhook-infinitepay/",
+            )
+        except InfinitePayConfiguracaoError as exc:
+            logger.error("Link de pagamento: configuração da InfinitePay inválida: %s", exc)
+            raise ServicoIndisponivel(
+                {
+                    "detail": (
+                        "Não foi possível gerar o link de pagamento no momento. "
+                        "Tente novamente em instantes."
+                    )
+                }
+            )
+        except InfinitePayIndisponivelError as exc:
+            logger.error("Link de pagamento: falha ao chamar a InfinitePay: %s", exc)
+            raise ServicoIndisponivel(
+                {
+                    "detail": (
+                        "Não foi possível gerar o link de pagamento no momento. "
+                        "Tente novamente em instantes."
+                    )
+                }
+            )
+
+        return Response({"url": url})
+
 
 class ServicoIndisponivel(APIException):
     # Plain APIException defaults to a 500; a failed *external* dependency
@@ -354,3 +453,101 @@ class FreteCalcularView(APIView):
             )
 
         return Response(opcoes)
+
+
+class InfinitePayWebhookView(APIView):
+    # Público (AllowAny) por necessidade, não por escolha de design — quem
+    # chama este endpoint é o servidor da InfinitePay, que não tem (nem pode
+    # ter) o cookie JWT de nenhum usuário do site. Mesmo padrão de
+    # "autenticação não é o mecanismo de confiança aqui" do
+    # FreteCalcularView, mas por um motivo mais sério: a InfinitePay não
+    # assina o webhook de forma nenhuma (sem HMAC, sem secret, sem header
+    # verificável — confirmado consultando a documentação deles, ver
+    # CLAUDE.md), então NADA no corpo desta requisição pode ser confiado só
+    # por ter chegado aqui. Qualquer um que descubra esta URL pode enviar um
+    # POST forjado alegando que um pedido foi pago.
+    #
+    # A confiança real vem de verificar_pagamento() (services/infinitepay.py)
+    # logo abaixo: em vez de confiar no campo "paid"/valor do corpo do
+    # webhook, este view liga de volta pra própria API da InfinitePay
+    # (payment_check) usando o transaction_nsu/slug que o webhook alegou, e
+    # só marca o pedido como confirmado se a InfinitePay concordar, no seu
+    # próprio registro, que aquela transação específica foi paga — e pelo
+    # valor esperado. Isso fecha o ataque óbvio (forjar um POST alegando
+    # pagamento) e também um mais sutil: como o handle é público e
+    # order_nsu não é validado por nenhum token do lado da InfinitePay,
+    # qualquer pessoa pode gerar seu próprio link de pagamento citando o
+    # order_nsu de um pedido alheio e de fato pagá-lo — só que por um valor
+    # menor (ex: R$0,01). payment_check() devolve o valor realmente pago
+    # daquela transação, e ele é comparado contra pedido.total abaixo antes
+    # de confirmar — um pagamento genuíno mas por um valor errado não
+    # confirma o pedido.
+    permission_classes = [AllowAny]
+    throttle_scope = "infinitepay_webhook"
+
+    def post(self, request):
+        order_nsu = request.data.get("order_nsu")
+        transaction_nsu = request.data.get("transaction_nsu")
+        invoice_slug = request.data.get("invoice_slug")
+
+        if not order_nsu or not transaction_nsu:
+            logger.warning(
+                "Webhook InfinitePay: payload sem order_nsu/transaction_nsu: %s",
+                request.data,
+            )
+            return Response({"success": False}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            pedido = Pedido.objects.get(pk=order_nsu)
+        except (Pedido.DoesNotExist, ValueError, TypeError):
+            # ValueError/TypeError: order_nsu não é um id numérico válido —
+            # não deveria acontecer com um order_nsu que realmente veio de um
+            # link gerado por nós (sempre str(pedido.id)), mas não é motivo
+            # pra estourar um 500 num endpoint público.
+            logger.warning("Webhook InfinitePay: order_nsu %r não corresponde a nenhum Pedido.", order_nsu)
+            return Response({"success": False}, status=status.HTTP_400_BAD_REQUEST)
+
+        if pedido.status != "novo":
+            # Já confirmado (webhook duplicado/reentregue — a InfinitePay
+            # pode reenviar) ou em outro estado (cancelado etc). Idempotente:
+            # responde sucesso sem re-verificar nem alterar nada, evitando
+            # tanto uma segunda chamada desnecessária ao payment_check quanto
+            # reabrir um pedido que já saiu do estado "aguardando pagamento".
+            return Response({"success": True})
+
+        try:
+            resultado = verificar_pagamento(
+                order_nsu=order_nsu, transaction_nsu=transaction_nsu, slug=invoice_slug
+            )
+        except (InfinitePayConfiguracaoError, InfinitePayIndisponivelError) as exc:
+            logger.error(
+                "Webhook InfinitePay: falha ao verificar pagamento do pedido %s: %s",
+                pedido.id,
+                exc,
+            )
+            # 503, não 400: o problema é nosso/da InfinitePay no momento, não
+            # do payload recebido — vale a pena a InfinitePay tentar de novo
+            # mais tarde (comportamento documentado: 400 aciona retry; um 5xx
+            # também é tratado como falha temporária pela maioria dos
+            # provedores de webhook).
+            return Response({"success": False}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        valor_esperado_centavos = int(pedido.total * 100)
+        if not resultado["paid"] or resultado["amount_centavos"] != valor_esperado_centavos:
+            logger.warning(
+                "Webhook InfinitePay: payment_check não confirmou pagamento esperado do "
+                "pedido %s (esperado %s centavos, resultado: %s).",
+                pedido.id,
+                valor_esperado_centavos,
+                resultado,
+            )
+            # Ainda 200: recebemos a notificação e a processamos (não é um
+            # erro nosso nem algo que uma nova tentativa da InfinitePay
+            # resolveria sozinho) — só que ela não bateu com o que
+            # esperávamos, então o pedido continua "novo" em vez de virar
+            # "confirmado".
+            return Response({"success": True})
+
+        pedido.status = "confirmado"
+        pedido.save(update_fields=["status"])
+        return Response({"success": True})

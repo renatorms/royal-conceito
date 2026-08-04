@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useCart } from "@/contexts/CartContext";
 import { enderecoSchema } from "@/schemas/enderecoSchema";
 import { listarEnderecos, criarEndereco } from "@/api/enderecos";
-import { criarPedido } from "@/api/pedidos";
+import { criarPedido, gerarLinkPagamento } from "@/api/pedidos";
 import { calcularFrete } from "@/api/frete";
 import { applyApiErrors } from "@/lib/apiErrors";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,17 @@ export default function Checkout() {
   const [enviando, setEnviando] = useState(false);
   const [erroGeral, setErroGeral] = useState(null);
   const pedidoConfirmadoRef = useRef(false);
+  // Set once POST /pedidos/ succeeds — from that point on the order exists
+  // for real (items decremented, stock committed), even if generating the
+  // InfinitePay payment link right after it fails. Kept separate from
+  // pedidoConfirmadoRef (which only guards the empty-cart redirect effect)
+  // because this one also drives which screen renders below: once an order
+  // exists, the page shows a "gerando link de pagamento" / retry state
+  // instead of either the full checkout form or nothing, even though the
+  // cart itself is already empty by this point.
+  const [pedidoCriadoId, setPedidoCriadoId] = useState(null);
+  const [gerandoLink, setGerandoLink] = useState(false);
+  const [erroLink, setErroLink] = useState(null);
 
   // Opções retornadas pela SuperFrete (uma por transportadora/serviço —
   // normalmente PAC e SEDEX) para o CEP de destino atual, guardadas junto
@@ -64,9 +75,10 @@ export default function Checkout() {
   });
 
   useEffect(() => {
-    // Ignora quando o carrinho esvaziou por causa de um pedido confirmado com
-    // sucesso — senão esse efeito corre com o navigate() de handleConfirmar e
-    // manda o usuário de volta pro /carrinho em vez do /pedido-confirmado.
+    // Ignora quando o carrinho esvaziou por causa de um pedido criado com
+    // sucesso (handleConfirmar chama limparCarrinho() antes de gerar o link
+    // de pagamento) — senão esse efeito mandaria o usuário de volta pro
+    // /carrinho bem no meio da tela de "gerando link de pagamento" abaixo.
     if (itens.length === 0 && !pedidoConfirmadoRef.current) {
       navigate("/carrinho", {
         replace: true,
@@ -169,7 +181,11 @@ export default function Checkout() {
     };
   }, [cepValido, cepLimpo, chaveFreteAtual, itens]);
 
-  if (itens.length === 0) {
+  // Once a Pedido has actually been created (pedidoCriadoId set), the cart is
+  // already cleared and the page switches to the "gerando link de pagamento"
+  // screen below instead of returning null — the order is real regardless of
+  // whether generating the InfinitePay link succeeds on the first try.
+  if (itens.length === 0 && !pedidoCriadoId) {
     return null;
   }
 
@@ -226,17 +242,81 @@ export default function Checkout() {
         frete: freteEscolhido,
       });
 
+      // From here on the order is real and committed (stock already
+      // decremented) regardless of what happens with the payment link below
+      // — the empty-cart redirect effect is disabled (pedidoConfirmadoRef)
+      // and the cart is cleared the same way it always was, before payment
+      // even used to exist as a step.
       pedidoConfirmadoRef.current = true;
       limparCarrinho();
-      navigate("/pedido-confirmado", { replace: true, state: { pedidoId: pedido.id } });
+      setPedidoCriadoId(pedido.id);
+      await solicitarLinkPagamento(pedido.id);
     } catch (error) {
       setErroGeral(
         error.response?.data?.detail ||
           "Não foi possível concluir o pedido. Verifique se os itens do carrinho ainda têm estoque disponível e tente novamente."
       );
+      setEnviando(false);
+    }
+  }
+
+  // Separate from handleConfirmar's own try/catch: called both right after
+  // a successful criarPedido() and again from the "Tentar novamente" button
+  // if generating the link fails — generating the InfinitePay link is an
+  // independent step from creating the order (see gerarLinkPagamento() in
+  // src/api/pedidos.js), so a retry here never re-creates the Pedido.
+  async function solicitarLinkPagamento(pedidoId) {
+    setErroLink(null);
+    setGerandoLink(true);
+    try {
+      const url = await gerarLinkPagamento(pedidoId);
+      // Full-page navigation, not react-router: the customer is leaving this
+      // SPA entirely to pay on InfinitePay's own hosted checkout page, and
+      // comes back later via redirect_url (see PedidoConfirmado.jsx).
+      // `.assign(url)` rather than `window.location.href = url` — the React
+      // Compiler's react-hooks/immutability rule flags a direct property
+      // write to `window.location` as mutating something defined outside
+      // the component; calling the platform's own navigation method instead
+      // isn't flagged, same effect.
+      window.location.assign(url);
+    } catch (error) {
+      setErroLink(
+        error.response?.data?.detail ||
+          "Não foi possível gerar o link de pagamento. Tente novamente."
+      );
+      setGerandoLink(false);
     } finally {
       setEnviando(false);
     }
+  }
+
+  // Order already exists — this screen replaces the checkout form entirely
+  // (not just an overlay on top of it) since there's nothing left to edit:
+  // address/frete/items were already frozen onto the Pedido at creation.
+  // window.location.href above means a success here never actually renders
+  // this branch for long (the page navigates away) — it's reachable mainly
+  // while gerandoLink is true, or after a failure, to offer a retry.
+  if (pedidoCriadoId) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-16 text-center">
+        <h1 className="text-2xl font-semibold">Pedido #{pedidoCriadoId} criado!</h1>
+        {gerandoLink ? (
+          <p className="mt-4 text-sm text-muted-foreground">
+            Preparando o link de pagamento, aguarde...
+          </p>
+        ) : (
+          <div className="mt-4 flex flex-col items-center gap-3">
+            <p className="text-sm text-destructive">{erroLink}</p>
+            <p className="text-sm text-muted-foreground">
+              Seu pedido já foi registrado — você só precisa concluir o pagamento.
+            </p>
+            <Button type="button" onClick={() => solicitarLinkPagamento(pedidoCriadoId)}>
+              Tentar novamente
+            </Button>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (

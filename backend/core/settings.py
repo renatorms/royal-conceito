@@ -168,6 +168,15 @@ REST_FRAMEWORK = {
         # while still bounding how much of our SuperFrete quota an
         # unauthenticated client can burn through.
         "frete": "20/min",
+        # Público (AllowAny — ver pedidos/views.py::InfinitePayWebhookView) e
+        # cada chamada legítima já dispara uma requisição de volta pra API da
+        # InfinitePay (payment_check, ver pedidos/services/infinitepay.py)
+        # pra confirmar o pagamento antes de confiar no corpo do webhook —
+        # mesma lógica de "endpoint público custa uma chamada externa" do
+        # `frete` acima, só que o volume esperado aqui é por pedido pago (não
+        # por visitante navegando o carrinho), então o limite é bem mais
+        # folgado.
+        "infinitepay_webhook": "100/min",
     },
 }
 
@@ -185,3 +194,28 @@ SUPERFRETE_CEP_ORIGEM = config("SUPERFRETE_CEP_ORIGEM", default="")
 SUPERFRETE_BASE_URL = (
     "https://sandbox.superfrete.com" if DEBUG else "https://api.superfrete.com"
 )
+
+# InfinitePay (link de pagamento) — ver pedidos/services/infinitepay.py.
+# Handle da conta InfinitePay que recebe o pagamento (ex: "renato-ramos-0g5",
+# a tag pública "$handle" da conta, sem o "$") — hoje aponta pra conta
+# pessoal de dev/teste do desenvolvedor, precisa ser trocado pelo handle da
+# conta do cliente antes de ir pra produção. Diferente da SuperFrete, a API
+# da InfinitePay não distingue sandbox/produção por host nem exige um token
+# de autenticação por requisição — qualquer chamada a POST .../links que
+# souber um handle válido gera um link de cobrança pra aquela conta (o
+# handle em si já funciona como identificador público, tipo um
+# "usuário.pagar.me/handle"); por isso não existe INFINITEPAY_BASE_URL
+# alternável por DEBUG aqui, só essa credencial.
+INFINITEPAY_HANDLE = config("INFINITEPAY_HANDLE", default="")
+
+# URLs públicas do próprio site — usadas para montar `redirect_url` (pra onde
+# a InfinitePay manda o cliente de volta após o pagamento) e `webhook_url`
+# (pra onde a InfinitePay notifica o pagamento confirmado) na criação do link
+# de pagamento. Não existiam variáveis assim no projeto até agora porque
+# nenhuma outra integração precisava que o backend soubesse sua própria URL
+# pública nem a do frontend — SuperFrete e o próprio frontend sempre foram
+# quem chama o backend, nunca o contrário. Defaults cobrem o ambiente de dev
+# local (frontend Vite em 5173, backend em 8000); em produção ambas precisam
+# apontar pros domínios reais.
+FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:5173")
+BACKEND_URL = config("BACKEND_URL", default="http://localhost:8000")

@@ -65,3 +65,18 @@ export async function buscarPedido(id) {
   const { data } = await api.get(`/pedidos/${id}/`);
   return data;
 }
+
+// Generates a real InfinitePay checkout link for an already-created Pedido —
+// a separate call from criarPedido() above, not folded into it. Deliberate:
+// generating a payment link is a call to a third-party gateway that can fail
+// for reasons unrelated to whether the order itself is valid (same class of
+// external-dependency flakiness as calcularFrete()), so it's kept independent
+// of order creation — a failure here doesn't mean the Pedido needs to be
+// recreated, just that this call can be retried on its own (see
+// Checkout.jsx). Only callable on the Pedido's own owner (or staff), same as
+// every other /pedidos/ endpoint; the backend also rejects it if the Pedido
+// isn't in "novo" status (already paid or cancelled).
+export async function gerarLinkPagamento(pedidoId) {
+  const { data } = await api.post(`/pedidos/${pedidoId}/gerar-link-pagamento/`);
+  return data.url;
+}
