@@ -26,12 +26,12 @@ export function Header() {
     // before this redesign, just relocated into its own grid column; only
     // the old catch-all "Categorias" MegaMenu was replaced, by `HeaderNav`
     // — see CLAUDE.md for the full redesign.
-    <header className="grid grid-cols-[auto_1fr_auto] items-center gap-4 border-b border-border px-4 py-3">
+    <header className="grid grid-cols-[auto_1fr_auto] items-center gap-4 border-b border-border px-4 py-4">
       <Link to="/" className="shrink-0">
         <img
           src={logoRoyalConceito}
           alt="Royal Conceito"
-          className="h-12 w-auto object-contain"
+          className="h-16 w-auto object-contain"
         />
       </Link>
 
