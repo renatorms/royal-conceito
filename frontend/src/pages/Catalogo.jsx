@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { listarProdutos, listarCategorias, listarMarcas } from "@/api/produtos";
+import { listarProdutos } from "@/api/produtos";
 import { ProdutoCard } from "@/components/ProdutoCard";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -12,9 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const TODOS = "todos";
 const PADRAO = "padrao";
-const SEARCH_DEBOUNCE_MS = 400;
 const PAGE_SIZE = 10;
 
 const RESULTADO_INICIAL = {
@@ -35,27 +32,10 @@ export default function Catalogo() {
   const ordering = searchParams.get("ordering") || "";
   const page = Number(searchParams.get("page")) || 1;
 
-  const [searchInput, setSearchInput] = useState(search);
-  const [lastUrlSearch, setLastUrlSearch] = useState(search);
-  const [categorias, setCategorias] = useState([]);
-  const [marcas, setMarcas] = useState([]);
   const [resultado, setResultado] = useState(RESULTADO_INICIAL);
 
   const chaveAtual = JSON.stringify({ categoria, marca, search, ordering, page });
   const isLoading = resultado.chave !== chaveAtual;
-
-  // Keeps the input in sync when `search` changes from outside a keystroke
-  // (e.g. browser back/forward) — updating state during render, per
-  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
-  if (search !== lastUrlSearch) {
-    setLastUrlSearch(search);
-    setSearchInput(search);
-  }
-
-  useEffect(() => {
-    listarCategorias().then(setCategorias).catch(() => {});
-    listarMarcas().then(setMarcas).catch(() => {});
-  }, []);
 
   useEffect(() => {
     let ignore = false;
@@ -89,29 +69,10 @@ export default function Catalogo() {
     };
   }, [categoria, marca, search, ordering, page, chaveAtual]);
 
-  useEffect(() => {
-    const handle = setTimeout(() => {
-      if (searchInput === search) return;
-
-      setSearchParams((params) => {
-        const nextParams = new URLSearchParams(params);
-        if (searchInput) {
-          nextParams.set("search", searchInput);
-        } else {
-          nextParams.delete("search");
-        }
-        nextParams.delete("page");
-        return nextParams;
-      });
-    }, SEARCH_DEBOUNCE_MS);
-
-    return () => clearTimeout(handle);
-  }, [searchInput, search, setSearchParams]);
-
   function atualizarFiltro(chave, valor) {
     setSearchParams((params) => {
       const nextParams = new URLSearchParams(params);
-      if (valor && valor !== TODOS && valor !== PADRAO) {
+      if (valor && valor !== PADRAO) {
         nextParams.set(chave, valor);
       } else {
         nextParams.delete(chave);
@@ -135,16 +96,6 @@ export default function Catalogo() {
 
   const totalPaginas = Math.max(1, Math.ceil(resultado.count / PAGE_SIZE));
 
-  const categoriaItems = [
-    { value: TODOS, label: "Todas as categorias" },
-    ...categorias.map((c) => ({ value: String(c.id), label: c.nome })),
-  ];
-
-  const marcaItems = [
-    { value: TODOS, label: "Todas as marcas" },
-    ...marcas.map((m) => ({ value: String(m.id), label: m.nome })),
-  ];
-
   const orderingItems = [
     { value: PADRAO, label: "Padrão" },
     { value: "preco", label: "Menor preço" },
@@ -153,49 +104,14 @@ export default function Catalogo() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-semibold">Catálogo</h1>
-
-      <div className="mb-6 flex flex-wrap items-end gap-3">
-        <Input
-          placeholder="Buscar produtos..."
-          className="w-full max-w-xs"
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-        />
-
-        <Select
-          items={categoriaItems}
-          value={categoria || TODOS}
-          onValueChange={(v) => atualizarFiltro("categoria", v)}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Categoria" />
-          </SelectTrigger>
-          <SelectContent>
-            {categoriaItems.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select
-          items={marcaItems}
-          value={marca || TODOS}
-          onValueChange={(v) => atualizarFiltro("marca", v)}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Marca" />
-          </SelectTrigger>
-          <SelectContent>
-            {marcaItems.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {/* Busca/categoria/marca são cobertos pelo HeaderNav (busca, e
+          navegação Tênis/Roupas/Acessórios/Marcas) — só a ordenação, que
+          não existe lá e é específica desta visualização em lista, tem
+          controle aqui. Título e ordenação dividem uma linha em vez de
+          duas (era um `<h1>` + uma barra de filtros de 4 campos abaixo)
+          já que agora só há um controle a mostrar. */}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">Catálogo</h1>
 
         <Select
           items={orderingItems}
