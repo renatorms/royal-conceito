@@ -3,6 +3,7 @@ import { ShoppingCartIcon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
+import { MegaMenu } from "@/components/MegaMenu";
 
 export function Header() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
@@ -21,6 +22,8 @@ export function Header() {
       </Link>
 
       <nav className="flex items-center gap-3 text-sm">
+        <MegaMenu />
+
         <Link to="/meus-pedidos" className="text-muted-foreground hover:text-foreground">
           Meus Pedidos
         </Link>

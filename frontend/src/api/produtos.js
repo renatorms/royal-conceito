@@ -37,3 +37,8 @@ export async function listarCategorias() {
 export async function listarMarcas() {
   return listarTodasPaginas("/marcas/");
 }
+
+export async function buscarMenuCategorias() {
+  const { data } = await api.get("/menu/categorias/");
+  return data;
+}
