@@ -3,7 +3,7 @@ import { ShoppingCartIcon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
-import { MegaMenu } from "@/components/MegaMenu";
+import { HeaderNav } from "@/components/HeaderNav";
 
 export function Header() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
@@ -16,14 +16,23 @@ export function Header() {
   }
 
   return (
-    <header className="flex items-center justify-between border-b border-border px-4 py-3">
+    // Classic e-commerce 3-column layout: logo (auto-width, left) — nav
+    // (1fr, truly centered regardless of how wide the logo/actions columns
+    // are — a plain flex `justify-between` would only visually center the
+    // middle item if both sides happened to be equal width) — actions
+    // (auto-width, right). The right-hand nav content itself (Meus
+    // Pedidos/Meus Endereços/carrinho/login-or-logout) is unchanged from
+    // before this redesign, just relocated into its own grid column; only
+    // the old catch-all "Categorias" MegaMenu was replaced, by `HeaderNav`
+    // — see CLAUDE.md for the full redesign.
+    <header className="grid grid-cols-[auto_1fr_auto] items-center gap-4 border-b border-border px-4 py-3">
       <Link to="/" className="font-semibold">
         Royal Conceito
       </Link>
 
-      <nav className="flex items-center gap-3 text-sm">
-        <MegaMenu />
+      <HeaderNav />
 
+      <nav className="flex items-center justify-end gap-3 text-sm">
         <Link to="/meus-pedidos" className="text-muted-foreground hover:text-foreground">
           Meus Pedidos
         </Link>
