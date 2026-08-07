@@ -138,7 +138,15 @@ class PedidoAdmin(admin.ModelAdmin):
     # default=0 (pedidos/models.py), so excluding it from the add form
     # doesn't risk a NOT NULL failure — a brand-new Pedido has no items
     # yet, so 0 is exactly the right value there too, not just a fallback.
-    readonly_fields = ["total"]
+    # link_pagamento_url is included here too, also unconditionally: unlike
+    # frete_valor/etc below (needed by hand for a phone order with no real
+    # SuperFrete integration in the admin), there's no legitimate reason to
+    # ever hand-type a payment link — it's a pure cache of what
+    # PedidoViewSet.gerar_link_pagamento() got back from InfinitePay, always
+    # either blank or that exact value. Safe unconditionally the same way
+    # `total` is: the field is null=True, blank=True with no default, so
+    # excluding it from the add form can't hit a NOT NULL failure either.
+    readonly_fields = ["total", "link_pagamento_url"]
 
     def get_readonly_fields(self, request, obj=None):
         # usuario/endereco: same IDOR class as Endereco.usuario (see

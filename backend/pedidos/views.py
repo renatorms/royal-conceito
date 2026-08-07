@@ -327,6 +327,23 @@ class PedidoViewSet(viewsets.ModelViewSet):
                 {"detail": "Este pedido não está aguardando pagamento."}
             )
 
+        if pedido.link_pagamento_url:
+            # Idempotency fix (see CLAUDE.md, "InfinitePay Payment
+            # Integration" — this used to be an open gap): a link already
+            # exists for this Pedido from a previous call (the frontend's
+            # own "Tentar novamente" retry, a double-click, or any repeat
+            # call for a still-"novo" order) — reuse it instead of minting a
+            # new one via a second POST /links call. No expiration/
+            # invalidation mechanism for a checkout link is documented by
+            # InfinitePay (Central de Ajuda checked directly for this fix —
+            # no article on link validity/cancellation found; the technical
+            # API reference at docs.infinitepay.io could not be reached to
+            # check further — see CLAUDE.md), so validity is tied to
+            # `status` instead: the guard above already blocks generating
+            # (or reusing) a link once the Pedido leaves "novo", which is
+            # exactly when this cached link stops being relevant.
+            return Response({"url": pedido.link_pagamento_url})
+
         itens = [
             {
                 "descricao": (
@@ -386,6 +403,8 @@ class PedidoViewSet(viewsets.ModelViewSet):
                 }
             )
 
+        pedido.link_pagamento_url = url
+        pedido.save(update_fields=["link_pagamento_url"])
         return Response({"url": url})
 
 

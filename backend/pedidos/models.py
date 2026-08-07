@@ -51,6 +51,19 @@ class Pedido(models.Model):
     # signals.py::recalcula_total_pedido) — pedidos antigos, com
     # frete_valor=None, continuam com total = soma dos itens, sem mudança de
     # comportamento.
+    link_pagamento_url = models.URLField(null=True, blank=True)
+    # Cache do link de checkout da InfinitePay já gerado para este Pedido —
+    # ver CLAUDE.md ("sem idempotência na geração de link"). null=True,
+    # blank=True, sem backfill: mesmo padrão de frete_nome acima, pedidos
+    # criados antes deste campo simplesmente não têm um link salvo (o que é
+    # correto — se ainda estiverem "novo" e alguém chamar
+    # gerar-link-pagamento, um novo link é gerado e passa a ser cacheado daí
+    # em diante). Validade não depende de tempo, só do status do Pedido: só
+    # é reutilizado enquanto status == "novo" (ver
+    # PedidoViewSet.gerar_link_pagamento()) — a InfinitePay não documenta
+    # (nem no Checkout Integrado nem na Central de Ajuda) nenhum mecanismo de
+    # expiração automática ou de invalidação/cancelamento de um link já
+    # criado, então não há uma data de validade real pra guardar aqui.
 
     def __str__(self):
         return f"Pedido #{self.id} - {self.usuario}"
