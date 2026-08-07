@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import { HeaderNav } from "@/components/HeaderNav";
+import logoRoyalConceito from "@/assets/logoroyalconceito.png";
 
 export function Header() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
@@ -26,8 +27,12 @@ export function Header() {
     // the old catch-all "Categorias" MegaMenu was replaced, by `HeaderNav`
     // — see CLAUDE.md for the full redesign.
     <header className="grid grid-cols-[auto_1fr_auto] items-center gap-4 border-b border-border px-4 py-3">
-      <Link to="/" className="font-semibold">
-        Royal Conceito
+      <Link to="/" className="shrink-0">
+        <img
+          src={logoRoyalConceito}
+          alt="Royal Conceito"
+          className="h-12 w-auto object-contain"
+        />
       </Link>
 
       <HeaderNav />
