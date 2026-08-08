@@ -13,13 +13,14 @@ async function listarTodasPaginas(endpoint) {
   return results;
 }
 
-export async function listarProdutos({ categoria, marca, search, ordering, page } = {}) {
+export async function listarProdutos({ categoria, marca, search, ordering, page, pageSize } = {}) {
   const params = {};
   if (categoria) params.categoria = categoria;
   if (marca) params.marca = marca;
   if (search) params.search = search;
   if (ordering) params.ordering = ordering;
   if (page) params.page = page;
+  if (pageSize) params.page_size = pageSize;
 
   const { data } = await api.get("/produtos/", { params });
   return data;

@@ -12,7 +12,12 @@ import {
 } from "@/components/ui/select";
 
 const PADRAO = "padrao";
-const PAGE_SIZE = 10;
+const PAGE_SIZE_PADRAO = 10;
+// Mantido em sincronia com ProdutoPagination.max_page_size (backend,
+// produtos/pagination.py) — só o valor máximo (50) precisa bater; o
+// backend recusa qualquer page_size acima disso, então oferecer uma opção
+// maior aqui não adiantaria nada.
+const OPCOES_PAGE_SIZE = [10, 20, 50];
 
 const RESULTADO_INICIAL = {
   chave: null,
@@ -31,16 +36,18 @@ export default function Catalogo() {
   const search = searchParams.get("search") || "";
   const ordering = searchParams.get("ordering") || "";
   const page = Number(searchParams.get("page")) || 1;
+  const pageSizeParam = Number(searchParams.get("page_size"));
+  const pageSize = OPCOES_PAGE_SIZE.includes(pageSizeParam) ? pageSizeParam : PAGE_SIZE_PADRAO;
 
   const [resultado, setResultado] = useState(RESULTADO_INICIAL);
 
-  const chaveAtual = JSON.stringify({ categoria, marca, search, ordering, page });
+  const chaveAtual = JSON.stringify({ categoria, marca, search, ordering, page, pageSize });
   const isLoading = resultado.chave !== chaveAtual;
 
   useEffect(() => {
     let ignore = false;
 
-    listarProdutos({ categoria, marca, search, ordering, page })
+    listarProdutos({ categoria, marca, search, ordering, page, pageSize })
       .then((data) => {
         if (ignore) return;
         setResultado({
@@ -67,7 +74,7 @@ export default function Catalogo() {
     return () => {
       ignore = true;
     };
-  }, [categoria, marca, search, ordering, page, chaveAtual]);
+  }, [categoria, marca, search, ordering, page, pageSize, chaveAtual]);
 
   function atualizarFiltro(chave, valor) {
     setSearchParams((params) => {
@@ -94,13 +101,32 @@ export default function Catalogo() {
     });
   }
 
-  const totalPaginas = Math.max(1, Math.ceil(resultado.count / PAGE_SIZE));
+  function alterarPageSize(valor) {
+    setSearchParams((params) => {
+      const nextParams = new URLSearchParams(params);
+      const novoPageSize = Number(valor);
+      if (novoPageSize && novoPageSize !== PAGE_SIZE_PADRAO) {
+        nextParams.set("page_size", String(novoPageSize));
+      } else {
+        nextParams.delete("page_size");
+      }
+      nextParams.delete("page");
+      return nextParams;
+    });
+  }
+
+  const totalPaginas = Math.max(1, Math.ceil(resultado.count / pageSize));
 
   const orderingItems = [
     { value: PADRAO, label: "Padrão" },
     { value: "preco", label: "Menor preço" },
     { value: "-preco", label: "Maior preço" },
   ];
+
+  const pageSizeItems = OPCOES_PAGE_SIZE.map((valor) => ({
+    value: String(valor),
+    label: `${valor} por página`,
+  }));
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -113,22 +139,41 @@ export default function Catalogo() {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Catálogo</h1>
 
-        <Select
-          items={orderingItems}
-          value={ordering || PADRAO}
-          onValueChange={(v) => atualizarFiltro("ordering", v)}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Ordenar" />
-          </SelectTrigger>
-          <SelectContent>
-            {orderingItems.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap items-center gap-3">
+          <Select
+            items={pageSizeItems}
+            value={String(pageSize)}
+            onValueChange={alterarPageSize}
+          >
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Por página" />
+            </SelectTrigger>
+            <SelectContent>
+              {pageSizeItems.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            items={orderingItems}
+            value={ordering || PADRAO}
+            onValueChange={(v) => atualizarFiltro("ordering", v)}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Ordenar" />
+            </SelectTrigger>
+            <SelectContent>
+              {orderingItems.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {resultado.erro ? (

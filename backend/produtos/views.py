@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import Categoria, Marca, Produto, Variacao
+from .pagination import ProdutoPagination
 from .permissions import IsAdminOrReadOnly
 from .serializers import (
     CategoriaSerializer,
@@ -39,6 +40,7 @@ class ProdutoViewSet(viewsets.ModelViewSet):
     )
     serializer_class = ProdutoSerializer
     permission_classes = [IsAdminOrReadOnly]
+    pagination_class = ProdutoPagination
     filterset_fields = ["marca", "categoria"]
     search_fields = ["nome", "marca__nome"]
     ordering_fields = ["nome", "preco"]
