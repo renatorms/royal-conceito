@@ -91,7 +91,15 @@ export default function ProdutoDetalhe() {
       </Link>
 
       <div className="mt-4 grid gap-6 sm:grid-cols-2">
-        <ProdutoImagemPlaceholder className="rounded-xl" />
+        {produto.imagem_url ? (
+          <img
+            src={produto.imagem_url}
+            alt={produto.nome}
+            className="aspect-square w-full rounded-xl object-cover"
+          />
+        ) : (
+          <ProdutoImagemPlaceholder className="rounded-xl" />
+        )}
 
         <div className="flex flex-col gap-3">
           {produto.marca_nome && (

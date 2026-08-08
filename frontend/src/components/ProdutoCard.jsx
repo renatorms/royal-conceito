@@ -7,7 +7,15 @@ export function ProdutoCard({ produto }) {
   return (
     <Link to={`/produtos/${produto.id}`} className="block">
       <Card className="p-0 transition-shadow hover:shadow-md">
-        <ProdutoImagemPlaceholder />
+        {produto.imagem_url ? (
+          <img
+            src={produto.imagem_url}
+            alt={produto.nome}
+            className="aspect-square w-full object-cover"
+          />
+        ) : (
+          <ProdutoImagemPlaceholder />
+        )}
         <CardContent className="flex flex-col gap-1 px-4 py-3">
           {produto.marca_nome && (
             <span className="text-xs text-muted-foreground">{produto.marca_nome}</span>
