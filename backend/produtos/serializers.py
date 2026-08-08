@@ -62,4 +62,5 @@ class ProdutoSerializer(serializers.ModelSerializer):
             "categoria",
             "categoria_nome",
             "variacoes",
+            "imagem_url",
         ]

@@ -33,6 +33,18 @@ class Produto(models.Model):
         Categoria, on_delete=models.SET_NULL, null=True, blank=True, related_name="produtos"
     )
     # SET_NULL: deletar categoria não remove o produto do sistema
+    imagem_url = models.CharField(max_length=255, null=True, blank=True)
+    # CharField, não URLField: guarda um caminho relativo servido pelo próprio
+    # frontend (ex: "/produtos/CONJUNTO-LACOSTE-2026.jpg", arquivo estático em
+    # frontend/public/produtos/ — ver produtos/management/commands/
+    # importar_produtos_reais.py e CLAUDE.md), não uma URL absoluta externa.
+    # Confirmado que URLField/URLValidator rejeita esse formato (exige
+    # esquema, ex. "https://") — usar URLField faria qualquer save() futuro
+    # através de um ModelForm (ex: Django Admin) ou de um serializer que
+    # valide o campo falhar com "Insira um URL válido.", mesmo o valor sendo
+    # correto para como o app realmente serve a imagem. null=True/blank=True
+    # porque um Produto pode existir sem imagem (ex: cadastrado à mão no
+    # admin antes de uma foto real ser adicionada).
 
     def __str__(self):
         return self.nome
