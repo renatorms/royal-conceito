@@ -11,14 +11,69 @@ import { NavDropdown } from "@/components/NavDropdown";
 // oversight: the real fix would be adding a `tipo` field to Categoria,
 // which is a data-model decision out of scope for this Header redesign
 // (same reasoning CLAUDE.md already uses for leaving "Promoções" out — see
-// there). If a Categoria is ever renamed, or a new clothing category is
-// added under a name not listed here, "Roupas" simply won't pick it up
-// until this list is updated by hand.
-const NOMES_CATEGORIAS_ROUPA = ["Camisetas", "Bermudas", "Calças", "Jaquetas/Moletons"];
+// there). If a Categoria is ever renamed, or a new one is added under a
+// name not listed in the group it logically belongs to, that nav item
+// simply won't pick it up until the matching list below is updated by
+// hand — this has already happened once for real (see CLAUDE.md): five
+// real categorias the user created by hand through the Admin —
+// "Conjuntos", "Jeans", "Polos", "Bermudas Elastano", "Sandálias" — went
+// unrecognized elsewhere in the backend (`aplicar_variacoes_padrao.py`)
+// until their names were added to the matching list there too.
+//
+// Three groups today, each backing its own NavDropdown mega menu below
+// (same shape: a grid of categoria → marcas, via `PainelCategoriasMarcas`).
+// "Tamanho único" categorias (Bonés, Acessórios) and "roupa" categorias
+// both use TAMANHOS_ROUPA/TAMANHO_UNICO server-side (see CATEGORIAS_CONFIG,
+// `seed_produtos.py`) — that backend grouping is the actual source of
+// truth these three lists mirror by hand on the frontend, not something
+// derived automatically from it (no endpoint exposes it as data yet).
+const NOMES_CATEGORIAS_ROUPA = [
+  "Camisetas",
+  "Bermudas",
+  "Calças",
+  "Jaquetas/Moletons",
+  "Polos",
+  "Bermudas Elastano",
+  "Jeans",
+  "Conjuntos",
+];
+const NOMES_CATEGORIAS_CALCADO = ["Tênis", "Sandálias"];
+const NOMES_CATEGORIAS_ACESSORIO = ["Acessórios", "Bonés"];
 
-const CLASSE_LINK_NAV = "text-muted-foreground hover:text-foreground";
 const CLASSE_LINK_PAINEL =
   "text-sm text-muted-foreground underline-offset-4 hover:text-primary hover:underline";
+
+// Shared panel content for every categoria-grouped NavDropdown below
+// (Calçados/Roupas/Acessórios) — extracted once all three needed the exact
+// same "grid of categoria → marcas" shape (previously only "Roupas" had
+// this; duplicating it two more times verbatim wasn't worth it). "Marcas"
+// still renders its own flat list further down, not this: it has no
+// categoria dimension to group by.
+function PainelCategoriasMarcas({ categorias }) {
+  return (
+    <div className="grid grid-cols-2 gap-x-8 gap-y-5 lg:grid-cols-4">
+      {categorias.map((categoria) => (
+        <div key={categoria.id}>
+          <p className="mb-2 border-b border-primary/30 pb-1 text-sm font-semibold text-foreground">
+            {categoria.nome}
+          </p>
+          <ul className="space-y-1.5">
+            {categoria.marcas.map((marca) => (
+              <li key={marca.id}>
+                <Link
+                  to={`/?categoria=${categoria.id}&marca=${marca.id}`}
+                  className={CLASSE_LINK_PAINEL}
+                >
+                  {marca.nome}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function HeaderNav() {
   const [menuCategorias, setMenuCategorias] = useState([]);
@@ -51,59 +106,43 @@ export function HeaderNav() {
     navigate(termo ? `/?search=${encodeURIComponent(termo)}` : "/");
   }
 
-  // Tênis/Acessórios (direct links) and Roupas (the mega menu below) are
-  // all derived from the SAME GET /api/menu/categorias/ call — no separate
-  // GET /categorias/ request just to resolve two ids, since this data
+  // Calçados/Roupas/Acessórios (all three mega menus below) are derived
+  // from the SAME GET /api/menu/categorias/ call — no separate
+  // GET /categorias/ request just to resolve their ids, since this data
   // already has them. Trade-off, inherited from that endpoint's own
   // design (see CLAUDE.md): it only lists a Categoria that currently has
-  // at least one Produto with a Marca set, so "Tênis"/"Acessórios"/
-  // "Roupas" quietly stop rendering if their categoria's stock/catalog
-  // ever drops to zero, rather than showing a dead link into an empty
-  // catalog view.
-  const categoriaTenis = menuCategorias.find((c) => c.nome === "Tênis");
-  const categoriaAcessorios = menuCategorias.find((c) => c.nome === "Acessórios");
+  // at least one Produto with a Marca set, so a categoria (and, if it's
+  // the only one left in its group, the whole nav item) quietly stops
+  // rendering if its catalog/stock ever drops to zero, rather than
+  // showing a dead link into an empty view.
+  const categoriasCalcado = menuCategorias.filter((c) =>
+    NOMES_CATEGORIAS_CALCADO.includes(c.nome)
+  );
   const categoriasRoupa = menuCategorias.filter((c) =>
     NOMES_CATEGORIAS_ROUPA.includes(c.nome)
+  );
+  const categoriasAcessorio = menuCategorias.filter((c) =>
+    NOMES_CATEGORIAS_ACESSORIO.includes(c.nome)
   );
 
   return (
     <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">
-      {categoriaTenis && (
-        <Link to={`/?categoria=${categoriaTenis.id}`} className={CLASSE_LINK_NAV}>
-          Tênis
-        </Link>
+      {categoriasCalcado.length > 0 && (
+        <NavDropdown label="Calçados">
+          <PainelCategoriasMarcas categorias={categoriasCalcado} />
+        </NavDropdown>
       )}
 
       {categoriasRoupa.length > 0 && (
         <NavDropdown label="Roupas">
-          <div className="grid grid-cols-2 gap-x-8 gap-y-5 lg:grid-cols-4">
-            {categoriasRoupa.map((categoria) => (
-              <div key={categoria.id}>
-                <p className="mb-2 border-b border-primary/30 pb-1 text-sm font-semibold text-foreground">
-                  {categoria.nome}
-                </p>
-                <ul className="space-y-1.5">
-                  {categoria.marcas.map((marca) => (
-                    <li key={marca.id}>
-                      <Link
-                        to={`/?categoria=${categoria.id}&marca=${marca.id}`}
-                        className={CLASSE_LINK_PAINEL}
-                      >
-                        {marca.nome}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
+          <PainelCategoriasMarcas categorias={categoriasRoupa} />
         </NavDropdown>
       )}
 
-      {categoriaAcessorios && (
-        <Link to={`/?categoria=${categoriaAcessorios.id}`} className={CLASSE_LINK_NAV}>
-          Acessórios
-        </Link>
+      {categoriasAcessorio.length > 0 && (
+        <NavDropdown label="Acessórios">
+          <PainelCategoriasMarcas categorias={categoriasAcessorio} />
+        </NavDropdown>
       )}
 
       {marcas.length > 0 && (
@@ -112,7 +151,7 @@ export function HeaderNav() {
         // plain vertical list inside the same NavDropdown shell is simpler
         // and reads better than forcing an arbitrary column split.
         // Deliberately every registered Marca (listarMarcas(), unfiltered)
-        // rather than only marcas with products (unlike Tênis/Roupas/
+        // rather than only marcas with products (unlike Calçados/Roupas/
         // Acessórios above) — a Marca with no stock right now still links
         // to a valid (if momentarily empty) filtered catalog view.
         <NavDropdown label="Marcas">
