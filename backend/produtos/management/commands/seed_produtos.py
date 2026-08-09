@@ -28,13 +28,42 @@ LINHAS = [
 ]
 
 # categoria -> (tipos de peça, faixa de preço em R$, tabela de tamanhos)
+#
+# As 5 categorias marcadas abaixo (Polos, Bermudas Elastano, Jeans, Conjuntos,
+# Sandálias) foram adicionadas em 08/08, não fazem parte do conjunto original
+# — o usuário já as havia criado pelo Django Admin durante o cadastro manual
+# dos produtos reais importados (ver importar_produtos_reais.py), e
+# aplicar_variacoes_padrao.py (que reaproveita este dict) as encontrou como
+# "não reconhecidas" na sua primeira execução real (77 produtos, "Conjuntos"
+# sozinha respondendo por 64 deles). Faixa de preço e tipos de peça abaixo são
+# só placeholders para o gerador de fixture (`gerar_preco()`/seed fictício) —
+# não afetam os produtos reais já cadastrados, que já têm seu próprio `preco`
+# definido à mão; escolhidos por proximidade com a categoria "irmã" mais
+# parecida já existente, não por dado real de mercado:
+#   - Polos: mesma faixa de Camisetas (peça de cima mais casual, preço similar).
+#   - Bermudas Elastano: mesma faixa de Bermudas (mesma peça, variação de
+#     tecido — elastano não muda a faixa de preço esperada).
+#   - Jeans: mesma faixa de Calças (Calças já inclui "Calça Jeans" como tipo
+#     de peça — Jeans aqui é a categoria dedicada para o mesmo tipo de item).
+#   - Conjuntos: faixa mais alta que qualquer peça avulsa (acima até de
+#     Jaquetas/Moletons) — é peça composta (2+ itens, ex: "Kit Completo
+#     Lacoste", "Conjunto Boss 2026"), preço de conjunto reflete a soma de
+#     mais de uma peça, não uma peça só.
+#   - Sandálias: mesma tabela de tamanhos de Tênis (TAMANHOS_CALCADO), mas
+#     faixa de preço mais baixa — sandália/chinelo/slide historicamente vende
+#     mais barato que tênis no mesmo público.
 CATEGORIAS_CONFIG = {
     "Camisetas": (["Camiseta"], (120, 450), TAMANHOS_ROUPA),
+    "Polos": (["Polo"], (120, 450), TAMANHOS_ROUPA),
     "Bermudas": (["Bermuda"], (150, 500), TAMANHOS_ROUPA),
+    "Bermudas Elastano": (["Bermuda"], (150, 500), TAMANHOS_ROUPA),
     "Calças": (["Calça", "Calça Jeans"], (220, 700), TAMANHOS_ROUPA),
+    "Jeans": (["Calça Jeans"], (220, 700), TAMANHOS_ROUPA),
     "Jaquetas/Moletons": (["Jaqueta", "Moletom", "Corta-Vento"], (350, 1200), TAMANHOS_ROUPA),
+    "Conjuntos": (["Conjunto", "Kit"], (400, 1500), TAMANHOS_ROUPA),
     "Bonés": (["Boné"], (120, 350), TAMANHO_UNICO),
     "Tênis": (["Tênis"], (400, 2000), TAMANHOS_CALCADO),
+    "Sandálias": (["Sandália", "Slide", "Chinelo"], (150, 700), TAMANHOS_CALCADO),
     "Acessórios": (["Óculos", "Cinto", "Carteira", "Mochila"], (80, 600), TAMANHO_UNICO),
 }
 
