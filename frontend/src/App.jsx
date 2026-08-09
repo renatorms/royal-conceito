@@ -13,6 +13,7 @@ import PedidoConfirmado from "@/pages/PedidoConfirmado";
 import MeusPedidos from "@/pages/MeusPedidos";
 import PedidoDetalhe from "@/pages/PedidoDetalhe";
 import MeusEnderecos from "@/pages/MeusEnderecos";
+import Perfil from "@/pages/Perfil";
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
               <Route path="/meus-pedidos" element={<MeusPedidos />} />
               <Route path="/meus-pedidos/:id" element={<PedidoDetalhe />} />
               <Route path="/meus-enderecos" element={<MeusEnderecos />} />
+              <Route path="/perfil" element={<Perfil />} />
             </Route>
           </Routes>
         </BrowserRouter>

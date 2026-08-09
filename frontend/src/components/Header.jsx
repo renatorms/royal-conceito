@@ -86,6 +86,12 @@ export function Header() {
                 <p className="truncate px-1 pb-2 text-xs text-muted-foreground">
                   {user.username}
                 </p>
+                <Link
+                  to="/perfil"
+                  className="mb-2 block text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Perfil
+                </Link>
                 <Button variant="outline" size="sm" className="w-full" onClick={handleLogout}>
                   Sair
                 </Button>
@@ -113,6 +119,12 @@ export function Header() {
                 <p className="truncate px-1 pb-2 text-xs text-muted-foreground">
                   {user.username}
                 </p>
+                <Link
+                  to="/perfil"
+                  className="mb-2 block text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Perfil
+                </Link>
                 <Button variant="outline" size="sm" className="w-full" onClick={handleLogout}>
                   Sair
                 </Button>
