@@ -1,3 +1,5 @@
+import re
+
 from django.db import models
 
 
@@ -62,6 +64,13 @@ class Produto(models.Model):
 # lugares, adicionar no outro também.
 ORDEM_TAMANHOS_ROUPA = ["P", "M", "G", "GG", "XG"]
 
+# Reconhece uma faixa "NN-NN" (ex: "35-40", tamanho de meia — ver
+# TAMANHOS_MEIA em produtos/management/commands/seed_produtos.py). Só dois
+# grupos de dígitos separados por um hífen — não usa `\d+` sozinho porque
+# isso também casaria parcialmente algo como "35-" ou "-40"; `$`/`^` (via
+# fullmatch) garantem que a string inteira é a faixa, nada sobrando.
+PADRAO_FAIXA_TAMANHO = re.compile(r"(\d+)-(\d+)")
+
 
 def chave_ordenacao_tamanho(tamanho):
     """Chave de ordenação lógica (não alfabética) para Variacao.tamanho.
@@ -75,20 +84,28 @@ def chave_ordenacao_tamanho(tamanho):
     padrao.py fazem isso), mas quebra assim que um tamanho é adicionado
     depois dos demais pelo Django Admin (ex: reposição de um tamanho que
     faltava) — foi exatamente esse o bug real observado, não uma ordenação
-    alfabética explícita (ver CLAUDE.md). Três grupos, cada um ordenado
+    alfabética explícita (ver CLAUDE.md). Quatro grupos, cada um ordenado
     corretamente dentro de si e nunca misturado entre si (um Produto na
     prática só tem tamanhos de um grupo, mas a função não assume isso):
       1. Puramente numérico (calçado, ex: "38") -> ordena pelo valor inteiro.
-      2. Tamanho de roupa reconhecido (ver ORDEM_TAMANHOS_ROUPA) -> ordena
+      2. Faixa "NN-NN" (meia, ex: "35-40" — ver PADRAO_FAIXA_TAMANHO acima)
+         -> ordena pelo primeiro número da faixa. Checado ANTES do grupo de
+         roupa abaixo (a ordem dos `if`s importa: uma faixa não bate em
+         `isdigit()` por causa do hífen, então só precisa vir antes de
+         cair no catch-all por eliminação).
+      3. Tamanho de roupa reconhecido (ver ORDEM_TAMANHOS_ROUPA) -> ordena
          pela posição na lista.
-      3. Qualquer outro valor (tamanho único "U", ou algo inesperado) ->
+      4. Qualquer outro valor (tamanho único "U", ou algo inesperado) ->
          ordena por último, alfabeticamente entre si.
     """
     if tamanho.isdigit():
         return (0, int(tamanho), "")
+    faixa = PADRAO_FAIXA_TAMANHO.fullmatch(tamanho)
+    if faixa:
+        return (1, int(faixa.group(1)), "")
     if tamanho in ORDEM_TAMANHOS_ROUPA:
-        return (1, ORDEM_TAMANHOS_ROUPA.index(tamanho), "")
-    return (2, 0, tamanho)
+        return (2, ORDEM_TAMANHOS_ROUPA.index(tamanho), "")
+    return (3, 0, tamanho)
 
 
 class Variacao(models.Model):

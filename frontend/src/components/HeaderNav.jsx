@@ -22,36 +22,61 @@ import { NavDropdown } from "@/components/NavDropdown";
 //
 // Three groups today, each backing its own NavDropdown mega menu below
 // (same shape: a grid of categoria → marcas, via `PainelCategoriasMarcas`).
-// "Tamanho único" categorias (Bonés, Acessórios) and "roupa" categorias
-// both use TAMANHOS_ROUPA/TAMANHO_UNICO server-side (see CATEGORIAS_CONFIG,
+// "Tamanho único" categorias (Bonés, Relógios, ...) and "roupa" categorias
+// both use TAMANHO_UNICO/TAMANHOS_ROUPA server-side (see CATEGORIAS_CONFIG,
 // `seed_produtos.py`) — that backend grouping is the actual source of
 // truth these three lists mirror by hand on the frontend, not something
 // derived automatically from it (no endpoint exposes it as data yet).
+// "Cuecas" adicionada 10/08 (produtos/management/commands/
+// criar_categoria_cuecas.py) — categoria de roupa como qualquer outra
+// aqui (TAMANHOS_ROUPA), não um acessório, então entra nesta lista, não em
+// NOMES_CATEGORIAS_ACESSORIO abaixo.
 const NOMES_CATEGORIAS_ROUPA = [
   "Camisetas",
   "Bermudas",
   "Calças",
-  "Jaquetas/Moletons",
+  "Jaquetas e Moletons",
   "Polos",
   "Bermudas Elastano",
   "Jeans",
   "Conjuntos",
+  "Cuecas",
 ];
 const NOMES_CATEGORIAS_CALCADO = ["Tênis", "Sandálias"];
 // "Relógios"/"Óculos"/"Cintos"/"Carteiras" adicionadas 10/08: até então
 // existiam só como "tipo de peça" dentro da própria Categoria "Acessórios"
 // (ver CATEGORIAS_CONFIG, seed_produtos.py), não como Categoria real, então
-// não podiam aparecer como colunas separadas aqui. "Acessórios" continua na
-// lista — vira o catch-all para o que não se encaixa nas quatro novas (ex:
-// shoulder bag), não foi substituída por elas. Ver
+// não podiam aparecer como colunas separadas aqui. Ver
 // produtos/management/commands/criar_categorias_acessorios.py e CLAUDE.md.
+//
+// Renomeada 10/08, mesmo dia: a Categoria catch-all em si mudou de nome de
+// "Acessórios" para "Outros Acessórios" (produtos/management/commands/
+// renomear_categoria_acessorios.py) — o dropdown do Header continua se
+// chamando "Acessórios" (é o `label` passado a NavDropdown logo abaixo,
+// não o nome de uma Categoria).
+//
+// "Outros Acessórios" REMOVIDA desta lista na rodada seguinte, mesmo dia:
+// a Categoria continua existindo (não foi deletada nem renomeada de volta,
+// nenhum Produto foi recategorizado), só deixou de ter uma coluna própria
+// neste dropdown — mostrar "Acessórios" (a coluna) dentro de "Acessórios"
+// (o dropdown) lia como repetição confusa. Produtos que ainda estão nela
+// ficam "órfãos" de navegação (continuam acháveis via Catálogo/busca, só
+// não aparecem mais por este menu) até serem recategorizados manualmente
+// para uma das colunas específicas abaixo ou outra categoria apropriada —
+// ver CLAUDE.md para a lista completa dos produtos afetados. "Shoulder
+// Bag" e "Meias" adicionadas no lugar, como categorias próprias — a
+// primeira era o único `tipo` dentro do catch-all antigo, a segunda é
+// inteiramente nova (numeração por faixa, não tamanho único — ver
+// TAMANHOS_MEIA em seed_produtos.py e chave_ordenacao_tamanho() em
+// produtos/models.py).
 const NOMES_CATEGORIAS_ACESSORIO = [
-  "Acessórios",
   "Bonés",
   "Relógios",
   "Óculos",
   "Cintos",
   "Carteiras",
+  "Shoulder Bag",
+  "Meias",
 ];
 
 const CLASSE_LINK_PAINEL =
@@ -96,8 +121,12 @@ export function HeaderNav() {
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    buscarMenuCategorias().then(setMenuCategorias).catch(() => {});
-    listarMarcas().then(setMarcas).catch(() => {});
+    buscarMenuCategorias()
+      .then(setMenuCategorias)
+      .catch(() => {});
+    listarMarcas()
+      .then(setMarcas)
+      .catch(() => {});
   }, []);
 
   const termoUrl = searchParams.get("search") || "";
@@ -130,13 +159,13 @@ export function HeaderNav() {
   // rendering if its catalog/stock ever drops to zero, rather than
   // showing a dead link into an empty view.
   const categoriasCalcado = menuCategorias.filter((c) =>
-    NOMES_CATEGORIAS_CALCADO.includes(c.nome)
+    NOMES_CATEGORIAS_CALCADO.includes(c.nome),
   );
   const categoriasRoupa = menuCategorias.filter((c) =>
-    NOMES_CATEGORIAS_ROUPA.includes(c.nome)
+    NOMES_CATEGORIAS_ROUPA.includes(c.nome),
   );
   const categoriasAcessorio = menuCategorias.filter((c) =>
-    NOMES_CATEGORIAS_ACESSORIO.includes(c.nome)
+    NOMES_CATEGORIAS_ACESSORIO.includes(c.nome),
   );
 
   return (

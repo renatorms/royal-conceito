@@ -8,19 +8,29 @@ from produtos.models import Categoria
 # "Acessórios" do Header (HeaderNav.jsx). "Relógios" é inteiramente novo,
 # nem existia como tipo de peça antes. Ver CLAUDE.md para o contexto
 # completo dessa reorganização.
-NOMES_CATEGORIAS = ["Relógios", "Óculos", "Cintos", "Carteiras"]
+#
+# "Shoulder Bag"/"Meias" adicionadas na rodada seguinte, mesmo dia (10/08):
+# mesma lógica — "Shoulder Bag" era o único `tipo` dentro do catch-all
+# "Outros Acessórios" (ver CATEGORIAS_CONFIG), "Meias" é inteiramente nova.
+# Ao mesmo tempo, "Outros Acessórios" (o catch-all em si) foi REMOVIDA de
+# NOMES_CATEGORIAS_ACESSORIO (HeaderNav.jsx) — ela continua existindo como
+# Categoria, só não aparece mais como coluna neste dropdown; produtos nela
+# ficam "órfãos" de navegação até recategorizados manualmente — ver
+# CLAUDE.md para a lista completa.
+NOMES_CATEGORIAS = ["Relógios", "Óculos", "Cintos", "Carteiras", "Shoulder Bag", "Meias"]
 
 
 class Command(BaseCommand):
     help = (
-        "Cria as 4 Categoria 'Relógios', 'Óculos', 'Cintos' e 'Carteiras' "
-        "(get_or_create, mesmo padrão de seed_produtos.py), separando-as do "
-        "guarda-chuva único 'Acessórios' para que cada uma apareça como sua "
-        "própria coluna no dropdown 'Acessórios' do Header. Só cria as "
-        "Categoria em si — NÃO recategoriza nenhum Produto existente; "
-        "produtos hoje cadastrados sob 'Acessórios' continuam lá até serem "
-        "recategorizados manualmente pelo usuário no Django Admin. "
-        "Idempotente via get_or_create: rodar de novo não duplica nada."
+        "Cria as Categoria 'Relógios', 'Óculos', 'Cintos', 'Carteiras', "
+        "'Shoulder Bag' e 'Meias' (get_or_create, mesmo padrão de "
+        "seed_produtos.py), separando-as do guarda-chuva único 'Outros "
+        "Acessórios' para que cada uma apareça como sua própria coluna no "
+        "dropdown 'Acessórios' do Header. Só cria as Categoria em si — NÃO "
+        "recategoriza nenhum Produto existente; produtos hoje cadastrados "
+        "sob 'Outros Acessórios' continuam lá até serem recategorizados "
+        "manualmente pelo usuário no Django Admin. Idempotente via "
+        "get_or_create: rodar de novo não duplica nada."
     )
 
     def handle(self, *args, **options):

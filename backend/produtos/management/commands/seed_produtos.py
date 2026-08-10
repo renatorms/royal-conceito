@@ -19,6 +19,19 @@ MARCAS = [
 TAMANHOS_ROUPA = ["P", "M", "G", "GG", "XG"]
 TAMANHOS_CALCADO = ["38", "39", "40", "41", "42", "43", "44"]
 TAMANHO_UNICO = ["U"]
+# Cinturão de couro/sintético — numeração de cintura em cm, mesmo padrão de
+# mercado (Nuvemshop/Shopify multimarcas costumam listar cinto por essa
+# faixa). Adicionada 10/08, junto com a mudança de "Cintos" de
+# TAMANHO_UNICO pra esta tabela — ver CATEGORIAS_CONFIG abaixo e CLAUDE.md.
+TAMANHOS_CINTO = ["90", "95", "100", "105"]
+# Meia — faixa de numeração de pé (não um valor único como calçado, nem
+# P/M/G como roupa): mesmo padrão de mercado de meia esportiva/casual, que
+# cobre uma faixa de tamanhos de pé por par em vez de vender por tamanho
+# exato. Cada valor é uma faixa "NN-NN", não um número puro — precisou de um
+# novo grupo em chave_ordenacao_tamanho() (produtos/models.py) para ordenar
+# corretamente, já que "35-40" não passa em `str.isdigit()`. Ver
+# CATEGORIAS_CONFIG abaixo e CLAUDE.md.
+TAMANHOS_MEIA = ["35-40", "41-46"]
 
 LINHAS = [
     "Classic", "Tech Fleece", "Slim Fit", "Essential", "Sport", "Premium",
@@ -71,6 +84,49 @@ LINHAS = [
 # própria, listá-los aqui também seria redundante/confuso para o gerador de
 # fixture). Produtos reais que já existem sob "Acessórios" hoje NÃO são
 # recategorizados automaticamente por essa mudança — ver CLAUDE.md.
+#
+# Dois ajustes adicionais, mesmo dia (10/08), depois que o dropdown
+# "Acessórios" acima ficou visível de verdade no Header:
+#   - A própria categoria catch-all "Acessórios" foi renomeada para "Outros
+#     Acessórios" (via management command dedicado, não uma migration —
+#     mesmo Categoria.id, só o `nome` muda) porque o dropdown do Header
+#     também se chama "Acessórios" (é o label do NavDropdown, não o nome de
+#     uma Categoria — não muda) e mostrar uma coluna "Acessórios" dentro do
+#     dropdown "Acessórios" lia como repetição/confuso. A chave abaixo
+#     reflete o nome novo.
+#   - "Cintos" trocou de TAMANHO_UNICO para TAMANHOS_CINTO (numeração real
+#     de cintura em cm) — Relógios/Bonés/o "Shoulder Bag" de "Outros
+#     Acessórios" continuam tamanho único, só Cintos tinha uma numeração de
+#     mercado óbvia que ainda não estava sendo usada.
+#
+# Rodada seguinte, mesmo dia (10/08) — "Outros Acessórios" removida do
+# dropdown do Header (produtos nela ficam "órfãos" de navegação até
+# recategorizados manualmente — ver CLAUDE.md), e três categorias novas:
+#   - "Shoulder Bag" virou Categoria própria — até aqui era só o único
+#     `tipo` dentro de "Outros Acessórios"; agora que saiu de lá, o `tipo`
+#     de "Outros Acessórios" virou o genérico "Acessório" (não há mais um
+#     tipo de peça óbvio para o catch-all puro).
+#   - "Cuecas" — nova categoria de roupa (TAMANHOS_ROUPA, mesma tabela
+#     P/M/G/GG/XG de Camisetas/Bermudas/etc), fica no dropdown "Roupas", não
+#     "Acessórios". Confirmado via shell antes de criar que não existia
+#     ainda no banco (`Categoria.objects.filter(nome__icontains="cueca")`
+#     vazio) — não é uma categoria esquecida de um cadastro manual anterior,
+#     como aconteceu com Polos/Jeans/etc (ver acima).
+#   - "Meias" — nova categoria de acessório com TAMANHOS_MEIA (faixas de
+#     numeração de pé, não tamanho único nem P/M/G).
+# Faixas de preço, mesmo espírito das anteriores — chute razoável pro
+# gerador de fixture, não pesquisa de mercado: Shoulder Bag na mesma faixa
+# de Carteiras/Cintos (acessório de couro/sintético, ticket parecido);
+# Cuecas mais barata que qualquer peça de vestuário externo (peça íntima
+# simples); Meias mais barata ainda (o item mais barato do catálogo de
+# acessórios em qualquer loja multimarcas comparável).
+#
+# Incidental, encontrado ao mexer neste dict, não pedido nesta rodada:
+# "Jaquetas/Moletons" foi renomeada para "Jaquetas e Moletons" na Categoria
+# real (fora desta sessão) sem a chave aqui ser atualizada — corrigido
+# junto, já que um mismatch aqui faz `aplicar_variacoes_padrao.py` tratar a
+# categoria como "não reconhecida" (confirmado via shell: a Categoria já
+# existia como "Jaquetas e Moletons", id 42, antes desta chave ser corrigida).
 CATEGORIAS_CONFIG = {
     "Camisetas": (["Camiseta"], (120, 450), TAMANHOS_ROUPA),
     "Polos": (["Polo"], (120, 450), TAMANHOS_ROUPA),
@@ -78,16 +134,19 @@ CATEGORIAS_CONFIG = {
     "Bermudas Elastano": (["Bermuda"], (150, 500), TAMANHOS_ROUPA),
     "Calças": (["Calça", "Calça Jeans"], (220, 700), TAMANHOS_ROUPA),
     "Jeans": (["Calça Jeans"], (220, 700), TAMANHOS_ROUPA),
-    "Jaquetas/Moletons": (["Jaqueta", "Moletom", "Corta-Vento"], (350, 1200), TAMANHOS_ROUPA),
+    "Jaquetas e Moletons": (["Jaqueta", "Moletom", "Corta-Vento"], (350, 1200), TAMANHOS_ROUPA),
     "Conjuntos": (["Conjunto", "Kit"], (400, 1500), TAMANHOS_ROUPA),
+    "Cuecas": (["Cueca"], (40, 150), TAMANHOS_ROUPA),
     "Bonés": (["Boné"], (120, 350), TAMANHO_UNICO),
     "Tênis": (["Tênis"], (400, 2000), TAMANHOS_CALCADO),
     "Sandálias": (["Sandália", "Slide", "Chinelo"], (150, 700), TAMANHOS_CALCADO),
-    "Acessórios": (["Shoulder Bag"], (80, 600), TAMANHO_UNICO),
+    "Outros Acessórios": (["Acessório"], (80, 600), TAMANHO_UNICO),
     "Relógios": (["Relógio"], (300, 2500), TAMANHO_UNICO),
     "Óculos": (["Óculos"], (150, 900), TAMANHO_UNICO),
-    "Cintos": (["Cinto"], (80, 350), TAMANHO_UNICO),
+    "Cintos": (["Cinto"], (80, 350), TAMANHOS_CINTO),
     "Carteiras": (["Carteira"], (100, 450), TAMANHO_UNICO),
+    "Shoulder Bag": (["Shoulder Bag"], (150, 600), TAMANHO_UNICO),
+    "Meias": (["Meia"], (30, 90), TAMANHOS_MEIA),
 }
 
 TOTAL_PRODUTOS = 50
