@@ -38,7 +38,21 @@ const NOMES_CATEGORIAS_ROUPA = [
   "Conjuntos",
 ];
 const NOMES_CATEGORIAS_CALCADO = ["Tênis", "Sandálias"];
-const NOMES_CATEGORIAS_ACESSORIO = ["Acessórios", "Bonés"];
+// "Relógios"/"Óculos"/"Cintos"/"Carteiras" adicionadas 10/08: até então
+// existiam só como "tipo de peça" dentro da própria Categoria "Acessórios"
+// (ver CATEGORIAS_CONFIG, seed_produtos.py), não como Categoria real, então
+// não podiam aparecer como colunas separadas aqui. "Acessórios" continua na
+// lista — vira o catch-all para o que não se encaixa nas quatro novas (ex:
+// shoulder bag), não foi substituída por elas. Ver
+// produtos/management/commands/criar_categorias_acessorios.py e CLAUDE.md.
+const NOMES_CATEGORIAS_ACESSORIO = [
+  "Acessórios",
+  "Bonés",
+  "Relógios",
+  "Óculos",
+  "Cintos",
+  "Carteiras",
+];
 
 const CLASSE_LINK_PAINEL =
   "text-sm text-muted-foreground underline-offset-4 hover:text-primary hover:underline";

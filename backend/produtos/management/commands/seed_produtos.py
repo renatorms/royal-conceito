@@ -52,6 +52,25 @@ LINHAS = [
 #   - Sandálias: mesma tabela de tamanhos de Tênis (TAMANHOS_CALCADO), mas
 #     faixa de preço mais baixa — sandália/chinelo/slide historicamente vende
 #     mais barato que tênis no mesmo público.
+#
+# Adicionado 10/08 — "Acessórios" deixou de ser o único guarda-chuva para
+# óculos/cinto/carteira/relógio: essas quatro passaram a ser Categoria reais
+# no banco (ver produtos/management/commands/criar_categorias_acessorios.py),
+# para que cada uma apareça como sua própria coluna no dropdown "Acessórios"
+# do Header (HeaderNav.jsx) em vez de ficarem escondidas como "tipo de peça"
+# dentro de uma única categoria. Faixas de preço, de novo, são só chute
+# razoável para o gerador de fixture — não pesquisa de mercado real:
+#   - Relógios/Óculos: ticket historicamente mais alto que cinto/carteira no
+#     mesmo segmento (streetwear/grife) — faixa mais alta que as outras três.
+#   - Cintos/Carteiras: acessórios de couro/sintético mais simples, ticket
+#     mais baixo — faixas próximas uma da outra.
+# "Acessórios" continua existindo como categoria (não foi removida) — vira o
+# catch-all para o que não se encaixa nas quatro novas (ex: shoulder bag);
+# por isso seu tipo de peça mudou de "Mochila" para "Shoulder Bag" e perdeu
+# "Óculos"/"Cinto"/"Carteira" da lista (esses três tipos agora têm categoria
+# própria, listá-los aqui também seria redundante/confuso para o gerador de
+# fixture). Produtos reais que já existem sob "Acessórios" hoje NÃO são
+# recategorizados automaticamente por essa mudança — ver CLAUDE.md.
 CATEGORIAS_CONFIG = {
     "Camisetas": (["Camiseta"], (120, 450), TAMANHOS_ROUPA),
     "Polos": (["Polo"], (120, 450), TAMANHOS_ROUPA),
@@ -64,7 +83,11 @@ CATEGORIAS_CONFIG = {
     "Bonés": (["Boné"], (120, 350), TAMANHO_UNICO),
     "Tênis": (["Tênis"], (400, 2000), TAMANHOS_CALCADO),
     "Sandálias": (["Sandália", "Slide", "Chinelo"], (150, 700), TAMANHOS_CALCADO),
-    "Acessórios": (["Óculos", "Cinto", "Carteira", "Mochila"], (80, 600), TAMANHO_UNICO),
+    "Acessórios": (["Shoulder Bag"], (80, 600), TAMANHO_UNICO),
+    "Relógios": (["Relógio"], (300, 2500), TAMANHO_UNICO),
+    "Óculos": (["Óculos"], (150, 900), TAMANHO_UNICO),
+    "Cintos": (["Cinto"], (80, 350), TAMANHO_UNICO),
+    "Carteiras": (["Carteira"], (100, 450), TAMANHO_UNICO),
 }
 
 TOTAL_PRODUTOS = 50
