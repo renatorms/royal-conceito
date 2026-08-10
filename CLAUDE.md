@@ -2,6 +2,28 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Limitações conhecidas para o cliente
+
+Seção colocada logo no topo do arquivo, de propósito — é a única parte deste documento pensada para leitura rápida antes de uma conversa com o cliente, sem precisar entender código; o resto do arquivo é documentação técnica densa, para consumo do desenvolvedor/da IA. Cada item abaixo já está documentado (com mais detalhe técnico) em algum outro ponto deste arquivo — esta seção só reúne, em português simples, o que já se sabe.
+
+**Dinheiro e prazo de lançamento:**
+- **Pagamento:** o sistema já gera um link de pagamento real e confirma o pedido automaticamente quando o cliente paga, mas isso nunca foi testado de ponta a ponta com um pagamento de verdade — só em simulações. Além disso, hoje o link é gerado na conta pessoal de testes do desenvolvedor, não na conta real da loja. **As duas coisas precisam ser resolvidas antes de vender de verdade.**
+- **Frete:** o cálculo de frete também usa uma credencial de teste (sandbox) da transportadora parceira. Também precisa trocar pela credencial real antes do lançamento.
+- **Imagens dos produtos:** as fotos dos produtos hoje só existem no computador do desenvolvedor — não estão em nenhum servidor. Se o site for publicado hoje, nenhuma imagem de produto vai aparecer. Precisa migrar as imagens para um serviço de hospedagem antes de ir ao ar.
+- **Textos institucionais:** as páginas "Quem Somos" e "Política de Privacidade" (rodapé do site) têm só texto genérico de exemplo, não o texto real da loja. **A Política de Privacidade em especial não pode ir ao ar como está** — ela tem implicação jurídica real (o que a loja diz que faz com os dados do cliente) e precisa ser revisada por um advogado ou pelo próprio cliente antes do lançamento.
+- **Produtos de teste no catálogo:** existem hoje cerca de 124 produtos fictícios no banco, com nome começando em "[TESTE]", criados só para os menus de navegação do site terem o que mostrar durante o desenvolvimento. Eles aparecem no catálogo normalmente e precisam ser apagados antes do lançamento (à medida que produtos reais forem cadastrados nas mesmas marcas/categorias).
+
+**Uso do dia a dia (o cliente/quem administra o catálogo precisa saber):**
+- **Categoria nova não aparece sozinha no menu do topo:** quando uma Categoria nova é criada pelo Admin, ela não aparece automaticamente nos menus "Roupas"/"Calçados"/"Acessórios" no topo do site — é preciso avisar o desenvolvedor para incluir o nome dela numa lista fixa no código primeiro. Sem isso, a categoria existe e pode ser vendida, só não aparece nesse menu específico.
+- **Produto só aparece no menu do topo com categoria E marca preenchidas:** não basta preencher só uma das duas — um produto sem marca (ou sem categoria) definida não vai aparecer nesses menus de navegação, mesmo que já esteja à venda e apareça na busca/catálogo normal.
+- **"Promoções" ainda não existe:** o sistema hoje não tem nenhum jeito de marcar um produto como "em promoção" ou dar desconto — por isso não existe (e não vai aparecer sozinho) um item de "Promoções" no menu do site.
+- **Cadastro duplicado por e-mail:** hoje é possível duas contas diferentes se cadastrarem com o mesmo e-mail (o sistema só impede um cliente de *trocar* o e-mail de uma conta já existente para um que já está em uso por outra).
+
+**Polimento visual pendente (nada quebrado, só falta acabamento):**
+- O cabeçalho do site ainda é uma versão inicial — em telas bem estreitas (celular pequeno), os links do canto direito (Meus Pedidos, carrinho, login) podem se apertar/sobrepor.
+- As cores da "etiqueta" de status do pedido (novo/confirmado/enviado etc.) ainda usam o tema claro antigo e destoam um pouco do visual escuro atual do site — continuam legíveis, só não combinam perfeitamente.
+- O site só tem o tema escuro por enquanto, sem opção de alternar para um tema claro.
+
 ## Project Overview
 
 Royal Conceito — an e-commerce backend for a clothing store, built with Django 6 + Django REST Framework. Brazilian Portuguese is used for model/field names and UI. The frontend (React/Vite) is under active development (Phase 4) in `frontend/`.
