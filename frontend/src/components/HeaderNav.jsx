@@ -31,9 +31,16 @@ import { NavDropdown } from "@/components/NavDropdown";
 // criar_categoria_cuecas.py) — categoria de roupa como qualquer outra
 // aqui (TAMANHOS_ROUPA), não um acessório, então entra nesta lista, não em
 // NOMES_CATEGORIAS_ACESSORIO abaixo.
+//
+// "Bermudas" (sem "Elastano") removida 10/08, rodada de correção separada:
+// não existia mais Categoria alguma com esse nome no banco (confirmado via
+// shell — só "Bermudas Elastano" existe hoje), então essa entrada nunca
+// batia com nada em GET /api/menu/categorias/ e nunca teria produzido uma
+// coluna própria de qualquer forma; mantê-la aqui era só um nome morto,
+// removida em vez de recriar a Categoria (o banco é a fonte da verdade —
+// ver seed_produtos.py e CLAUDE.md para o histórico completo).
 const NOMES_CATEGORIAS_ROUPA = [
   "Camisetas",
-  "Bermudas",
   "Calças",
   "Jaquetas e Moletons",
   "Polos",

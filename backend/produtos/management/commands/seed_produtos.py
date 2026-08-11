@@ -54,8 +54,12 @@ LINHAS = [
 # definido à mão; escolhidos por proximidade com a categoria "irmã" mais
 # parecida já existente, não por dado real de mercado:
 #   - Polos: mesma faixa de Camisetas (peça de cima mais casual, preço similar).
-#   - Bermudas Elastano: mesma faixa de Bermudas (mesma peça, variação de
-#     tecido — elastano não muda a faixa de preço esperada).
+#   - Bermudas Elastano: faixa escolhida na época pensando na mesma peça sem
+#     elastano ("Bermudas" — elastano não mudaria a faixa de preço esperada).
+#     Ver nota datada de 10/08 mais abaixo: essa categoria "Bermudas" (sem
+#     "Elastano") não existe mais no banco hoje, então a comparação é só
+#     histórica — a faixa de preço em si não mudou, só a referência que a
+#     explicava.
 #   - Jeans: mesma faixa de Calças (Calças já inclui "Calça Jeans" como tipo
 #     de peça — Jeans aqui é a categoria dedicada para o mesmo tipo de item).
 #   - Conjuntos: faixa mais alta que qualquer peça avulsa (acima até de
@@ -127,10 +131,29 @@ LINHAS = [
 # junto, já que um mismatch aqui faz `aplicar_variacoes_padrao.py` tratar a
 # categoria como "não reconhecida" (confirmado via shell: a Categoria já
 # existia como "Jaquetas e Moletons", id 42, antes desta chave ser corrigida).
+#
+# Removida 10/08 (rodada de correção separada, depois de investigar um
+# achado da rodada anterior): a chave "Bermudas" (sem "Elastano") existia
+# aqui mas não tinha mais Categoria correspondente no banco — confirmado via
+# shell (`Categoria.objects.filter(nome="Bermudas")` vazio; só
+# "Bermudas Elastano" existe) e via `Categoria.objects.all()` (o id que
+# "Bermudas" ocupava, 40, simplesmente não existe mais na sequência —
+# confirmado também que nenhum `Produto` tem hoje `categoria=None` como
+# resultado disso (existe exatamente 1 `Produto` sem categoria no banco —
+# id 154, "Conjuntos Emporio Milano Armani" — mas o próprio nome já indica
+# que é um caso de "Conjuntos" ainda não categorizado, não um resquício da
+# remoção de "Bermudas"), então o que quer que tenha sido cadastrado ali foi
+# apagado, ou nunca chegou a ter produto vinculado, antes da própria
+# Categoria ser removida). Não foi
+# recriada — o banco é a fonte da verdade aqui, não este dict; uma entrada
+# em CATEGORIAS_CONFIG sem Categoria real por trás é só um dict key morto,
+# nunca combinado com nada por `aplicar_variacoes_padrao.py`/
+# `completar_marcas_por_categoria.py` (ambos iteram a partir de `Categoria`
+# reais, não a partir deste dict), então não quebrava nada tecnicamente —
+# mas mantê-la aqui era enganoso, sugerindo uma categoria que não existe.
 CATEGORIAS_CONFIG = {
     "Camisetas": (["Camiseta"], (120, 450), TAMANHOS_ROUPA),
     "Polos": (["Polo"], (120, 450), TAMANHOS_ROUPA),
-    "Bermudas": (["Bermuda"], (150, 500), TAMANHOS_ROUPA),
     "Bermudas Elastano": (["Bermuda"], (150, 500), TAMANHOS_ROUPA),
     "Calças": (["Calça", "Calça Jeans"], (220, 700), TAMANHOS_ROUPA),
     "Jeans": (["Calça Jeans"], (220, 700), TAMANHOS_ROUPA),
