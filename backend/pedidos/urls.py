@@ -7,6 +7,7 @@ from .views import (
     InfinitePayWebhookView,
     ItemPedidoViewSet,
     PedidoViewSet,
+    SolicitacaoTrocaDevolucaoViewSet,
 )
 
 router = routers.DefaultRouter()
@@ -14,6 +15,7 @@ router = routers.DefaultRouter()
 router.register("enderecos", EnderecoViewSet)
 router.register("itens", ItemPedidoViewSet)
 router.register("pedidos", PedidoViewSet)
+router.register("trocas-devolucoes", SolicitacaoTrocaDevolucaoViewSet)
 
 # FreteCalcularView/InfinitePayWebhookView aren't CRUD resources, so they
 # aren't registered on the router like the ViewSets above — same pattern as

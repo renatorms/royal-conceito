@@ -62,6 +62,24 @@ export function AuthProvider({ children }) {
     }
   }
 
+  // POST /me/senha/ — same "called directly through `api` here, not a
+  // separate src/api/ module" reasoning as atualizarPerfil() above, for
+  // consistency with every other account-identity endpoint in this
+  // context, even though this one doesn't touch `user` state at all (a
+  // password isn't part of MeSerializer's shape) — no state update after a
+  // successful call, unlike atualizarPerfil()/login().
+  async function alterarSenha(dados) {
+    try {
+      await api.post("/me/senha/", dados);
+      return { success: true };
+    } catch (error) {
+      const data = error.response?.data || {
+        detail: "Não foi possível alterar sua senha.",
+      };
+      return { success: false, error: data };
+    }
+  }
+
   async function logout() {
     try {
       await api.post("/logout/");
@@ -78,6 +96,7 @@ export function AuthProvider({ children }) {
     logout,
     register,
     atualizarPerfil,
+    alterarSenha,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from produtos.models import Variacao
 
-from .models import Endereco, ItemPedido, Pedido  # noqa # noqa: F401
+from .models import Endereco, ItemPedido, Pedido, SolicitacaoTrocaDevolucao  # noqa # noqa: F401
 
 
 class EnderecoSerializer(serializers.ModelSerializer):
@@ -169,3 +169,39 @@ class PedidoSerializer(serializers.ModelSerializer):
             "frete_transportadora",
             "frete_prazo_dias",
         ]
+
+
+class SolicitacaoTrocaDevolucaoSerializer(serializers.ModelSerializer):
+    # Três campos read-only derivados de item_pedido, só para exibição —
+    # mesmo padrão de ProdutoSerializer.categoria_nome/marca_nome e
+    # PedidoSerializer.endereco_detalhe: o cliente já manda `item_pedido`
+    # (um id) na criação, mas a tela de "minhas solicitações" precisa saber
+    # de qual pedido/produto/tamanho se trata sem um segundo round-trip por
+    # solicitação.
+    pedido_id = serializers.IntegerField(source="item_pedido.pedido_id", read_only=True)
+    produto_nome = serializers.CharField(source="item_pedido.produto_nome", read_only=True)
+    produto_tamanho = serializers.CharField(source="item_pedido.produto_tamanho", read_only=True)
+
+    class Meta:
+        model = SolicitacaoTrocaDevolucao
+        fields = [
+            "id",
+            "item_pedido",
+            "pedido_id",
+            "produto_nome",
+            "produto_tamanho",
+            "tipo",
+            "motivo",
+            "status",
+            "criado_em",
+            "atualizado_em",
+        ]
+        # `status` é sempre read_only aqui — nenhum cliente (nem staff) pode
+        # mudar o status de uma solicitação através desta API hoje. Não é um
+        # descuido: staff ainda pode revisar/mudar o status pelo Django
+        # Admin (ver SolicitacaoTrocaDevolucaoAdmin, pedidos/admin.py) — um
+        # endpoint dedicado de transição de status (com as regras de quem
+        # pode mudar o quê, notificação ao cliente, etc.) fica para uma fase
+        # futura de "área do lojista", fora do escopo desta primeira versão
+        # funcional da feature. Ver CLAUDE.md.
+        read_only_fields = ["status", "criado_em", "atualizado_em"]

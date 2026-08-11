@@ -98,6 +98,45 @@ class ItemPedido(models.Model):
         return f"{self.quantidade}x - {self.variacao} - (Pedido #{self.pedido.id})"
 
 
+class SolicitacaoTrocaDevolucao(models.Model):
+    TIPO_CHOICES = [
+        ("troca", "Troca"),
+        ("devolucao", "Devolução"),
+    ]
+    STATUS_CHOICES = [
+        ("pendente", "Pendente"),
+        ("em_analise", "Em análise"),
+        ("aprovada", "Aprovada"),
+        ("rejeitada", "Rejeitada"),
+        ("concluida", "Concluída"),
+    ]
+
+    item_pedido = models.ForeignKey(
+        ItemPedido, on_delete=models.PROTECT, related_name="solicitacoes_troca_devolucao"
+    )
+    # PROTECT, mesmo padrão de ItemPedido.variacao (não deixa deletar uma
+    # variação vendida): uma solicitação de troca/devolução é, ela mesma,
+    # um registro histórico — não faz sentido permitir apagar o ItemPedido
+    # que ela referencia e deixar a solicitação "no ar".
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
+    motivo = models.TextField()
+    # TextField, obrigatório (sem null=True/blank=True): diferente de
+    # complemento/produto_nome etc. em outros models deste app, este campo
+    # não tem um estado "ainda não preenchido" legítimo — é o cliente
+    # explicando por que está pedindo a troca/devolução, exigido no momento
+    # da criação (ver SolicitacaoTrocaDevolucaoViewSet.perform_create()).
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pendente")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Solicitação de Troca/Devolução"
+        verbose_name_plural = "Solicitações de Troca/Devolução"
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} - {self.item_pedido} ({self.get_status_display()})"
+
+
 class Endereco(models.Model):
     usuario = models.ForeignKey(User, on_delete=models.CASCADE)
     # CASCADE: se deletar usuário, deleta endereços

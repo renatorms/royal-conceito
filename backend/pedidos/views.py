@@ -12,13 +12,14 @@ from rest_framework.views import APIView
 
 from produtos.models import Variacao
 
-from .models import Endereco, ItemPedido, Pedido
-from .permissions import IsDonorOrStaff, IsItemDonorOrStaff
+from .models import Endereco, ItemPedido, Pedido, SolicitacaoTrocaDevolucao
+from .permissions import IsDonorOrStaff, IsItemDonorOrStaff, IsSolicitacaoDonorOrStaff
 from .serializers import (
     EnderecoSerializer,
     FreteCalcularSerializer,
     ItemPedidoSerializer,
     PedidoSerializer,
+    SolicitacaoTrocaDevolucaoSerializer,
 )
 from .services.infinitepay import (
     InfinitePayConfiguracaoError,
@@ -406,6 +407,68 @@ class PedidoViewSet(viewsets.ModelViewSet):
         pedido.link_pagamento_url = url
         pedido.save(update_fields=["link_pagamento_url"])
         return Response({"url": url})
+
+
+class SolicitacaoTrocaDevolucaoViewSet(viewsets.ModelViewSet):
+    queryset = SolicitacaoTrocaDevolucao.objects.all()
+    serializer_class = SolicitacaoTrocaDevolucaoSerializer
+    permission_classes = [IsAuthenticated, IsSolicitacaoDonorOrStaff]
+
+    def get_queryset(self):
+        # select_related percorrendo até Pedido/Produto: toda solicitação
+        # exibida numa lista precisa de pedido_id/produto_nome/
+        # produto_tamanho (ver SolicitacaoTrocaDevolucaoSerializer) — sem
+        # isso, cada linha da lista dispararia uma query extra pra resolver
+        # item_pedido.pedido_id/produto_nome, o mesmo problema de N+1 que
+        # ProdutoViewSet já evita com select_related/prefetch_related.
+        qs = SolicitacaoTrocaDevolucao.objects.select_related(
+            "item_pedido__pedido", "item_pedido__variacao"
+        )
+        user = self.request.user
+        if user.is_staff:
+            return qs
+        return qs.filter(item_pedido__pedido__usuario=user)
+
+    def perform_create(self, serializer):
+        # Mesma dupla checagem de ItemPedidoViewSet.perform_create() acima:
+        # `item_pedido` chega como um PrimaryKeyRelatedField sobre
+        # ItemPedido.objects.all() (não filtrado por dono já na definição do
+        # campo — DRF resolve o queryset uma vez, na definição da classe,
+        # antes de existir qualquer `request`), então a posse só pode ser
+        # confirmada aqui, depois da validação básica.
+        item_pedido = serializer.validated_data["item_pedido"]
+        user = self.request.user
+        if not user.is_staff and item_pedido.pedido.usuario != user:
+            # 403, não 404: mesmo padrão já usado em ItemPedidoViewSet/
+            # PedidoViewSet.perform_create() para o mesmo tipo de violação
+            # (tentar criar algo vinculado a um recurso de outro usuário) —
+            # aqui não há get_queryset() filtrando o item_pedido de entrada
+            # antes da permissão rodar (diferente de GET/detail, onde
+            # get_queryset() já esconde o registro e produz um 404 "de
+            # graça"), então a checagem explícita decide o código de status.
+            raise PermissionDenied(
+                "Você não pode solicitar troca/devolução de um item que não é seu."
+            )
+
+        if item_pedido.pedido.status != "entregue":
+            # Regra de negócio central da feature: só pedidos já entregues
+            # podem gerar uma solicitação de troca/devolução — pedir troca
+            # de algo que ainda nem chegou não faz sentido. Checado aqui,
+            # não no serializer/validate() (mesmo motivo documentado em
+            # PedidoViewSet.perform_create() para a checagem de
+            # itens_criacao vazio: DRF embrulha um ValidationError levantado
+            # dentro de validate() como `{"detail": [...]}`, uma lista, em
+            # vez do `{"detail": "..."}` que todo outro erro desta API usa).
+            raise ValidationError(
+                {
+                    "detail": (
+                        "Só é possível solicitar troca ou devolução de itens de "
+                        "pedidos já entregues."
+                    )
+                }
+            )
+
+        serializer.save()
 
 
 class ServicoIndisponivel(APIException):

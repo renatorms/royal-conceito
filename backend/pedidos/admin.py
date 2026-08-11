@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib import admin
 
-from .models import Endereco, ItemPedido, Pedido
+from .models import Endereco, ItemPedido, Pedido, SolicitacaoTrocaDevolucao
 
 # preco_unitario/subtotal are always server-computed — preco_unitario from
 # variacao.produto.preco (ItemPedidoViewSet.perform_create()), subtotal from
@@ -252,6 +252,22 @@ class ItemPedidoAdmin(admin.ModelAdmin):
             obj.produto_nome = obj.variacao.produto.nome
             obj.produto_tamanho = obj.variacao.tamanho
         super().save_model(request, obj, form, change)
+
+
+@admin.register(SolicitacaoTrocaDevolucao)
+class SolicitacaoTrocaDevolucaoAdmin(admin.ModelAdmin):
+    list_display = ["id", "item_pedido", "tipo", "status", "criado_em"]
+    list_filter = ["tipo", "status"]
+    search_fields = ["item_pedido__pedido__usuario__username", "item_pedido__produto_nome"]
+    # `status` é o único campo pensado pra ser mudado por aqui — é onde a
+    # API deixa a revisão da solicitação por enquanto (read_only na API, ver
+    # SolicitacaoTrocaDevolucaoSerializer/CLAUDE.md). `item_pedido`/`tipo`/
+    # `motivo` são o que o cliente efetivamente declarou ao abrir a
+    # solicitação — mesmo espírito de ITEM_PEDIDO_CAMPOS_SEMPRE_DERIVADOS
+    # acima (não deixar reescrever, por engano ou não, o que já foi
+    # registrado), só que aqui é a submissão original do cliente sendo
+    # protegida, não um valor derivado.
+    readonly_fields = ["item_pedido", "tipo", "motivo", "criado_em", "atualizado_em"]
 
 
 @admin.register(Endereco)
