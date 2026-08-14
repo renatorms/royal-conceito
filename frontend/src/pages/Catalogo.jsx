@@ -159,44 +159,40 @@ export default function Catalogo() {
       {/* Busca/categoria/marca são cobertos pelo HeaderNav (busca, e
           navegação Calçados/Roupas/Acessórios/Marcas/Outlet) — só
           ordenação, que não existe lá, tem controle aqui. */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Catálogo</h1>
+      <div className="mb-6 flex flex-wrap items-center justify-end gap-3">
+        <Select
+          items={pageSizeItems}
+          value={String(pageSize)}
+          onValueChange={alterarPageSize}
+        >
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="Por página" />
+          </SelectTrigger>
+          <SelectContent>
+            {pageSizeItems.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <Select
-            items={pageSizeItems}
-            value={String(pageSize)}
-            onValueChange={alterarPageSize}
-          >
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Por página" />
-            </SelectTrigger>
-            <SelectContent>
-              {pageSizeItems.map((item) => (
-                <SelectItem key={item.value} value={item.value}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            items={orderingItems}
-            value={ordering || PADRAO}
-            onValueChange={(v) => atualizarFiltro("ordering", v)}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Ordenar" />
-            </SelectTrigger>
-            <SelectContent>
-              {orderingItems.map((item) => (
-                <SelectItem key={item.value} value={item.value}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <Select
+          items={orderingItems}
+          value={ordering || PADRAO}
+          onValueChange={(v) => atualizarFiltro("ordering", v)}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Ordenar" />
+          </SelectTrigger>
+          <SelectContent>
+            {orderingItems.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {resultado.erro ? (
