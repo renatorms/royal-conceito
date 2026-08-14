@@ -4,12 +4,14 @@ import { ProdutoImagemPlaceholder } from "@/components/ProdutoImagemPlaceholder"
 import { formatarPreco } from "@/lib/utils";
 
 export function ProdutoCard({ produto }) {
+  const imagemSrc = produto.imagem || produto.imagem_url;
+
   return (
     <Link to={`/produtos/${produto.id}`} className="block">
       <Card className="p-0 transition-shadow hover:shadow-md">
-        {produto.imagem_url ? (
+        {imagemSrc ? (
           <img
-            src={produto.imagem_url}
+            src={imagemSrc}
             alt={produto.nome}
             className="aspect-square w-full object-cover"
           />

@@ -91,9 +91,14 @@ class VariacaoInline(admin.TabularInline):
 
 @admin.register(Produto)
 class ProdutoAdmin(admin.ModelAdmin):
-    list_display = ["nome", "preco", "marca", "categoria"]
-    list_filter = ["categoria", "marca"]
+    list_display = ["nome", "preco", "marca", "categoria", "em_outlet"]
+    list_filter = ["categoria", "marca", "em_outlet"]
     search_fields = ["nome", "marca__nome"]
+    # `imagem` (ImageField) já entra automaticamente como upload de arquivo
+    # no formulário do Admin, sem precisar de nada explícito aqui — só
+    # documentado porque é o ponto que substitui digitar imagem_url à mão
+    # (ver produtos/models.py e docs/produtos.md). `criado_em` não aparece
+    # no form (auto_now_add é sempre definido pelo Django, nunca editável).
     inlines = [VariacaoInline]
 
 

@@ -217,6 +217,18 @@ export function HeaderNav() {
         </NavDropdown>
       )}
 
+      {/* Outlet: link direto, não NavDropdown — mesmo padrão que Tênis/
+          Acessórios tinham antes de virarem dropdown. Produto ainda não tem
+          conceito de outlet/liquidação (preço promocional, desconto): só
+          um booleano de visibilidade (Produto.em_outlet, marcado à mão pelo
+          Admin), então não há nada pra agrupar num painel — um link puro
+          pra /?em_outlet=true já é o suficiente. Último item antes da
+          busca, depois de Marcas (ordem: Calçados → Roupas → Acessórios →
+          Marcas → Outlet). */}
+      <Link to="/?em_outlet=true" className="text-muted-foreground hover:text-foreground">
+        Outlet
+      </Link>
+
       <form onSubmit={handleBuscar} className="flex items-center gap-1">
         <Input
           type="search"

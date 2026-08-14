@@ -47,6 +47,28 @@ class Produto(models.Model):
     # correto para como o app realmente serve a imagem. null=True/blank=True
     # porque um Produto pode existir sem imagem (ex: cadastrado à mão no
     # admin antes de uma foto real ser adicionada).
+    imagem = models.ImageField(upload_to="produtos/", null=True, blank=True)
+    # Adicionado junto com MEDIA_ROOT/MEDIA_URL (core/settings.py) para
+    # permitir upload real de arquivo pelo Django Admin, em vez de exigir
+    # digitar um caminho/URL à mão em imagem_url. Convivem os dois campos:
+    # imagem_url continua sendo a fonte pros ~115 produtos já importados via
+    # importar_produtos_reais.py (caminho relativo servido pelo frontend);
+    # imagem é preenchido só para produtos cadastrados/editados dali em
+    # diante pelo Admin. ProdutoSerializer/frontend priorizam imagem quando
+    # presente, com fallback pra imagem_url. Solução intermediária: storage
+    # local do Django (MEDIA_ROOT) não é produção-ready (mesma pendência de
+    # sempre sobre hospedagem real de imagem — ver CLAUDE.md/docs/produtos.md).
+    em_outlet = models.BooleanField(default=False)
+    # Sem modelo de desconto/preço promocional — só marca visibilidade no
+    # link direto "Outlet" do Header (HeaderNav.jsx, /?em_outlet=true).
+    # default=False: nenhum produto existente vira outlet automaticamente,
+    # marcação é manual pelo Admin.
+    criado_em = models.DateTimeField(auto_now_add=True)
+    # auto_now_add: todo Produto já existente no banco recebeu a data da
+    # migration como criado_em (não a data real de cadastro, que não era
+    # guardada até agora) — limitação documentada, não um bug; só produtos
+    # criados a partir desta migration têm um criado_em fiel. Usado pela
+    # ordenação "Mais recentes" do Catálogo (ProdutoViewSet.ordering_fields).
 
     def __str__(self):
         return self.nome

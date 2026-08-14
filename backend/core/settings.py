@@ -127,6 +127,14 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 
+# Upload real de imagem de Produto pelo Django Admin (Produto.imagem,
+# produtos/models.py) — armazenamento local em disco, servido via
+# core/urls.py's static() apenas quando DEBUG=True. Solução intermediária,
+# não produção-ready: mesma pendência já documentada para imagem_url (ver
+# docs/produtos.md) sobre migrar para um serviço de hospedagem real.
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
 
 CORS_ALLOW_ALL_ORIGINS = DEBUG
 CORS_ALLOWED_ORIGINS = config(

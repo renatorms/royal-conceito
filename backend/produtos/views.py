@@ -41,9 +41,9 @@ class ProdutoViewSet(viewsets.ModelViewSet):
     serializer_class = ProdutoSerializer
     permission_classes = [IsAdminOrReadOnly]
     pagination_class = ProdutoPagination
-    filterset_fields = ["marca", "categoria"]
+    filterset_fields = ["marca", "categoria", "em_outlet"]
     search_fields = ["nome", "marca__nome"]
-    ordering_fields = ["nome", "preco"]
+    ordering_fields = ["nome", "preco", "criado_em"]
 
 
 class CategoriaMenuView(APIView):

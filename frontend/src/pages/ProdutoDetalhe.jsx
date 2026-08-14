@@ -64,6 +64,7 @@ export default function ProdutoDetalhe() {
 
   const produto = resultado.produto;
   const variacaoSelecionada = produto.variacoes.find((v) => v.id === variacaoId) || null;
+  const imagemSrc = produto.imagem || produto.imagem_url;
 
   function selecionarVariacao(variacao) {
     if (variacao.estoque <= 0) return;
@@ -91,9 +92,9 @@ export default function ProdutoDetalhe() {
       </Link>
 
       <div className="mt-4 grid gap-6 sm:grid-cols-2">
-        {produto.imagem_url ? (
+        {imagemSrc ? (
           <img
-            src={produto.imagem_url}
+            src={imagemSrc}
             alt={produto.nome}
             className="aspect-square w-full rounded-xl object-cover"
           />

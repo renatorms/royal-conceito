@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { LayoutGridIcon, ListIcon } from "lucide-react";
 import { listarProdutos } from "@/api/produtos";
 import { ProdutoCard } from "@/components/ProdutoCard";
+import { ProdutoCardLista } from "@/components/ProdutoCardLista";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -19,6 +21,9 @@ const PAGE_SIZE_PADRAO = 10;
 // maior aqui não adiantaria nada.
 const OPCOES_PAGE_SIZE = [10, 20, 50];
 
+const VIEW_PADRAO = "grid";
+const CHAVE_VIEW_LOCALSTORAGE = "catalogo_view";
+
 const RESULTADO_INICIAL = {
   chave: null,
   produtos: [],
@@ -35,19 +40,37 @@ export default function Catalogo() {
   const marca = searchParams.get("marca") || "";
   const search = searchParams.get("search") || "";
   const ordering = searchParams.get("ordering") || "";
+  const emOutlet = searchParams.get("em_outlet") === "true";
   const page = Number(searchParams.get("page")) || 1;
   const pageSizeParam = Number(searchParams.get("page_size"));
   const pageSize = OPCOES_PAGE_SIZE.includes(pageSizeParam) ? pageSizeParam : PAGE_SIZE_PADRAO;
 
+  // ?view= na URL manda quando presente; sem ele, cai pro que foi salvo no
+  // localStorage numa visita anterior (persistência entre sessões, não só
+  // dentro da mesma navegação); sem nenhum dos dois, grade é o padrão.
+  const viewParam = searchParams.get("view");
+  const view =
+    viewParam === "grid" || viewParam === "list"
+      ? viewParam
+      : localStorage.getItem(CHAVE_VIEW_LOCALSTORAGE) || VIEW_PADRAO;
+
   const [resultado, setResultado] = useState(RESULTADO_INICIAL);
 
-  const chaveAtual = JSON.stringify({ categoria, marca, search, ordering, page, pageSize });
+  const chaveAtual = JSON.stringify({
+    categoria,
+    marca,
+    search,
+    ordering,
+    emOutlet,
+    page,
+    pageSize,
+  });
   const isLoading = resultado.chave !== chaveAtual;
 
   useEffect(() => {
     let ignore = false;
 
-    listarProdutos({ categoria, marca, search, ordering, page, pageSize })
+    listarProdutos({ categoria, marca, search, ordering, page, pageSize, emOutlet })
       .then((data) => {
         if (ignore) return;
         setResultado({
@@ -74,7 +97,7 @@ export default function Catalogo() {
     return () => {
       ignore = true;
     };
-  }, [categoria, marca, search, ordering, page, pageSize, chaveAtual]);
+  }, [categoria, marca, search, ordering, emOutlet, page, pageSize, chaveAtual]);
 
   function atualizarFiltro(chave, valor) {
     setSearchParams((params) => {
@@ -115,12 +138,43 @@ export default function Catalogo() {
     });
   }
 
+  function alterarView(novaView) {
+    localStorage.setItem(CHAVE_VIEW_LOCALSTORAGE, novaView);
+    setSearchParams((params) => {
+      const nextParams = new URLSearchParams(params);
+      if (novaView !== VIEW_PADRAO) {
+        nextParams.set("view", novaView);
+      } else {
+        nextParams.delete("view");
+      }
+      return nextParams;
+    });
+    // Não mexe em "page": trocar o modo de visualização não é um filtro,
+    // continua mostrando a mesma página de resultados já carregada.
+  }
+
+  function limparFiltros() {
+    setSearchParams((params) => {
+      const nextParams = new URLSearchParams();
+      // page_size e view são preferências de exibição, não filtros — mantidas.
+      const pageSizeAtual = params.get("page_size");
+      if (pageSizeAtual) nextParams.set("page_size", pageSizeAtual);
+      const viewAtual = params.get("view");
+      if (viewAtual) nextParams.set("view", viewAtual);
+      return nextParams;
+    });
+  }
+
   const totalPaginas = Math.max(1, Math.ceil(resultado.count / pageSize));
+  const temFiltrosAtivos = Boolean(categoria || marca || search || ordering || emOutlet);
 
   const orderingItems = [
     { value: PADRAO, label: "Padrão" },
+    { value: "-criado_em", label: "Mais recentes" },
     { value: "preco", label: "Menor preço" },
     { value: "-preco", label: "Maior preço" },
+    { value: "nome", label: "Nome (A-Z)" },
+    { value: "-nome", label: "Nome (Z-A)" },
   ];
 
   const pageSizeItems = OPCOES_PAGE_SIZE.map((valor) => ({
@@ -131,11 +185,9 @@ export default function Catalogo() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       {/* Busca/categoria/marca são cobertos pelo HeaderNav (busca, e
-          navegação Tênis/Roupas/Acessórios/Marcas) — só a ordenação, que
-          não existe lá e é específica desta visualização em lista, tem
-          controle aqui. Título e ordenação dividem uma linha em vez de
-          duas (era um `<h1>` + uma barra de filtros de 4 campos abaixo)
-          já que agora só há um controle a mostrar. */}
+          navegação Calçados/Roupas/Acessórios/Marcas/Outlet) — só
+          ordenação e o modo de visualização, que não existem lá, têm
+          controle aqui. */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Catálogo</h1>
 
@@ -173,6 +225,29 @@ export default function Catalogo() {
               ))}
             </SelectContent>
           </Select>
+
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant={view === "grid" ? "secondary" : "ghost"}
+              size="icon-sm"
+              aria-label="Ver em grade"
+              aria-pressed={view === "grid"}
+              onClick={() => alterarView("grid")}
+            >
+              <LayoutGridIcon />
+            </Button>
+            <Button
+              type="button"
+              variant={view === "list" ? "secondary" : "ghost"}
+              size="icon-sm"
+              aria-label="Ver em lista"
+              aria-pressed={view === "list"}
+              onClick={() => alterarView("list")}
+            >
+              <ListIcon />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -181,13 +256,38 @@ export default function Catalogo() {
       ) : isLoading ? (
         <p className="text-sm text-muted-foreground">Carregando produtos...</p>
       ) : resultado.produtos.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nenhum produto encontrado.</p>
-      ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {resultado.produtos.map((produto) => (
-            <ProdutoCard key={produto.id} produto={produto} />
-          ))}
+        <div className="flex flex-col items-center gap-3 py-16 text-center">
+          <p className="text-sm text-muted-foreground">
+            {temFiltrosAtivos
+              ? "Nenhum produto encontrado para os filtros selecionados."
+              : "Nenhum produto encontrado."}
+          </p>
+          {temFiltrosAtivos && (
+            <Button type="button" variant="outline" size="sm" onClick={limparFiltros}>
+              Limpar filtros
+            </Button>
+          )}
         </div>
+      ) : (
+        <>
+          <p className="mb-4 text-sm text-muted-foreground">
+            {resultado.count} {resultado.count === 1 ? "produto encontrado" : "produtos encontrados"}
+          </p>
+
+          {view === "list" ? (
+            <div className="flex flex-col gap-3">
+              {resultado.produtos.map((produto) => (
+                <ProdutoCardLista key={produto.id} produto={produto} />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+              {resultado.produtos.map((produto) => (
+                <ProdutoCard key={produto.id} produto={produto} />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {resultado.count > 0 && (
