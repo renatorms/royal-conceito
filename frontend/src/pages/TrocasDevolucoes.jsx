@@ -256,7 +256,13 @@ export default function TrocasDevolucoes() {
         Minha Conta
       </Link>
 
-      <h1 className="mb-6 text-2xl font-semibold">Trocas e Devoluções</h1>
+      <h1 className="mb-2 text-2xl font-semibold">Trocas e Devoluções</h1>
+      <Link
+        to="/politica-de-trocas"
+        className="mb-6 inline-block text-sm text-primary underline-offset-4 hover:underline"
+      >
+        Ver política de trocas
+      </Link>
 
       <section className="mb-10 rounded-xl border border-border p-6">
         <h2 className="mb-4 text-lg font-medium">Nova solicitação</h2>

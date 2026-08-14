@@ -16,6 +16,15 @@ export function Footer() {
           <Link to="/privacidade" className="hover:text-foreground">
             Política de Privacidade
           </Link>
+          <Link to="/termos-de-uso" className="hover:text-foreground">
+            Termos de Uso
+          </Link>
+          <Link to="/politica-de-trocas" className="hover:text-foreground">
+            Trocas e Devoluções
+          </Link>
+          <Link to="/contato" className="hover:text-foreground">
+            Contato
+          </Link>
           <a href="#" className="hover:text-foreground">
             Instagram
           </a>

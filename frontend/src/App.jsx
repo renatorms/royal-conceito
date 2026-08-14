@@ -19,6 +19,10 @@ import MinhaContaDados from "@/pages/MinhaContaDados";
 import TrocasDevolucoes from "@/pages/TrocasDevolucoes";
 import Sobre from "@/pages/Sobre";
 import Privacidade from "@/pages/Privacidade";
+import Contato from "@/pages/Contato";
+import TermosDeUso from "@/pages/TermosDeUso";
+import PoliticaTrocas from "@/pages/PoliticaTrocas";
+import NotFound from "@/pages/NotFound";
 
 function App() {
   return (
@@ -34,6 +38,9 @@ function App() {
             <Route path="/registro" element={<Registro />} />
             <Route path="/sobre" element={<Sobre />} />
             <Route path="/privacidade" element={<Privacidade />} />
+            <Route path="/contato" element={<Contato />} />
+            <Route path="/termos-de-uso" element={<TermosDeUso />} />
+            <Route path="/politica-de-trocas" element={<PoliticaTrocas />} />
             <Route element={<PrivateRoute />}>
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/pedido-confirmado" element={<PedidoConfirmado />} />
@@ -44,6 +51,7 @@ function App() {
               <Route path="/minha-conta/dados" element={<MinhaContaDados />} />
               <Route path="/trocas-e-devolucoes" element={<TrocasDevolucoes />} />
             </Route>
+            <Route path="*" element={<NotFound />} />
           </Routes>
           <Footer />
         </BrowserRouter>
