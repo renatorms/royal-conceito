@@ -15,11 +15,10 @@ export function Header() {
     // (1fr, truly centered regardless of how wide the logo/actions columns
     // are — a plain flex `justify-between` would only visually center the
     // middle item if both sides happened to be equal width) — actions
-    // (auto-width, right). The right-hand nav content itself (Meus
-    // Pedidos/Meus Endereços/carrinho/account-icon-or-login) is unchanged
-    // in kind from before this redesign, just relocated into its own grid
-    // column; only the old catch-all "Categorias" MegaMenu was replaced,
-    // by `HeaderNav` — see CLAUDE.md for the full redesign.
+    // (auto-width, right). The right-hand actions cluster is just
+    // carrinho/account-icon-or-login — "Meus Pedidos"/"Meus Endereços"
+    // moved here briefly but were removed once they became redundant with
+    // the "Minha Conta" hub (MinhaConta.jsx), which already lists both.
     <header className="grid grid-cols-[auto_1fr_auto] items-center gap-4 border-b border-border px-4 py-4">
       <Link to="/" className="shrink-0">
         <img
@@ -32,14 +31,6 @@ export function Header() {
       <HeaderNav />
 
       <nav className="flex items-center justify-end gap-3 text-sm">
-        <Link to="/meus-pedidos" className="text-muted-foreground hover:text-foreground">
-          Meus Pedidos
-        </Link>
-
-        <Link to="/meus-enderecos" className="text-muted-foreground hover:text-foreground">
-          Meus Endereços
-        </Link>
-
         <Link
           to="/carrinho"
           aria-label="Carrinho"
