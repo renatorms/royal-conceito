@@ -20,13 +20,15 @@ export function Header() {
     // moved here briefly but were removed once they became redundant with
     // the "Minha Conta" hub (MinhaConta.jsx), which already lists both.
     <header className="grid grid-cols-[auto_1fr_auto] items-center gap-4 border-b border-border px-4 py-3">
-      <Link to="/" className="shrink-0">
-        <img
-          src={logoRoyalConceito}
-          alt="Royal Conceito"
-          className="h-12 w-auto object-contain scale-[1.6] origin-left"
-        />
-      </Link>
+      <div className="relative h-12 w-36 shrink-0">
+        <Link to="/" className="absolute inset-0 flex items-center">
+          <img
+            src={logoRoyalConceito}
+            alt="Royal Conceito"
+            className="absolute left-0 top-1/2 h-20 w-auto -translate-y-1/2 object-contain"
+          />
+        </Link>
+      </div>
 
       <HeaderNav />
 
