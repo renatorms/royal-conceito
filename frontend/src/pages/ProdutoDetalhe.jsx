@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { MinusIcon, PlusIcon } from "lucide-react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { HeartIcon, MinusIcon, PlusIcon } from "lucide-react";
 import { buscarProduto, listarProdutos } from "@/api/produtos";
+import { criarFavorito, deletarFavorito, listarFavoritos } from "@/api/favoritos";
 import { ProdutoCard } from "@/components/ProdutoCard";
 import { ProdutoImagemPlaceholder } from "@/components/ProdutoImagemPlaceholder";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { cn, formatarPreco } from "@/lib/utils";
 
@@ -18,14 +20,20 @@ const MAX_MAIS_PRODUTOS = 8;
 
 export default function ProdutoDetalhe() {
   const { id } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { adicionarItem } = useCart();
+  const { isAuthenticated } = useAuth();
   const [resultado, setResultado] = useState({ id: null, produto: null, erro: null });
   const [variacaoId, setVariacaoId] = useState(null);
   const [quantidade, setQuantidade] = useState(1);
   const [adicionado, setAdicionado] = useState(false);
   const [resultadoMaisProdutos, setResultadoMaisProdutos] = useState({ id: null, produtos: [] });
+  const [resultadoFavorito, setResultadoFavorito] = useState({ id: null, favoritoId: null });
   const isLoading = resultado.id !== id;
   const maisProdutos = resultadoMaisProdutos.id === id ? resultadoMaisProdutos.produtos : [];
+  const favoritoId = resultadoFavorito.id === id ? resultadoFavorito.favoritoId : null;
+  const isFavorito = favoritoId !== null;
 
   useEffect(() => {
     let ignore = false;
@@ -70,6 +78,52 @@ export default function ProdutoDetalhe() {
       ignore = true;
     };
   }, [id, resultado.produto]);
+
+  useEffect(() => {
+    let ignore = false;
+
+    if (!isAuthenticated || !resultado.produto) return undefined;
+
+    listarFavoritos()
+      .then((favoritos) => {
+        if (ignore) return;
+        const favorito = favoritos.find((f) => f.produto.id === resultado.produto.id);
+        setResultadoFavorito({ id, favoritoId: favorito ? favorito.id : null });
+      })
+      .catch(() => {
+        if (!ignore) setResultadoFavorito({ id, favoritoId: null });
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [id, isAuthenticated, resultado.produto]);
+
+  async function handleToggleFavorito() {
+    if (!isAuthenticated) {
+      navigate("/login", { state: { from: location } });
+      return;
+    }
+
+    if (isFavorito) {
+      const favoritoIdAtual = favoritoId;
+      setResultadoFavorito({ id, favoritoId: null });
+      try {
+        await deletarFavorito(favoritoIdAtual);
+      } catch {
+        setResultadoFavorito({ id, favoritoId: favoritoIdAtual });
+      }
+      return;
+    }
+
+    setResultadoFavorito({ id, favoritoId: "pendente" });
+    try {
+      const favorito = await criarFavorito(resultado.produto.id);
+      setResultadoFavorito({ id, favoritoId: favorito.id });
+    } catch {
+      setResultadoFavorito({ id, favoritoId: null });
+    }
+  }
 
   if (isLoading) {
     return (
@@ -137,7 +191,19 @@ export default function ProdutoDetalhe() {
           {produto.marca_nome && (
             <span className="text-sm text-muted-foreground">{produto.marca_nome}</span>
           )}
-          <h1 className="text-2xl font-semibold">{produto.nome}</h1>
+          <div className="flex items-start justify-between gap-3">
+            <h1 className="text-2xl font-semibold">{produto.nome}</h1>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label={isFavorito ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+              aria-pressed={isFavorito}
+              onClick={handleToggleFavorito}
+            >
+              <HeartIcon className={cn(isFavorito && "fill-destructive text-destructive")} />
+            </Button>
+          </div>
           {produto.categoria_nome && (
             <span className="text-sm text-muted-foreground">{produto.categoria_nome}</span>
           )}

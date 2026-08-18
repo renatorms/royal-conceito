@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import {
   ChevronRightIcon,
+  HeartIcon,
   LogOutIcon,
   MapPinIcon,
   PackageIcon,
@@ -34,6 +35,12 @@ const ITENS_NAVEGACAO = [
     icone: MapPinIcon,
     titulo: "Meus Endereços",
     descricao: "Gerencie os endereços salvos para entrega.",
+  },
+  {
+    to: "/meus-favoritos",
+    icone: HeartIcon,
+    titulo: "Meus Favoritos",
+    descricao: "Veja os produtos que você salvou como favoritos.",
   },
   {
     to: "/trocas-e-devolucoes",

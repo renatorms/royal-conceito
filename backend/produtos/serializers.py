@@ -1,6 +1,13 @@
 from rest_framework import serializers
 
-from .models import Categoria, Marca, Produto, Variacao, chave_ordenacao_tamanho  # noqa: F401
+from .models import (  # noqa: F401
+    Categoria,
+    Favorito,
+    Marca,
+    Produto,
+    Variacao,
+    chave_ordenacao_tamanho,
+)
 
 
 class CategoriaSerializer(serializers.ModelSerializer):
@@ -82,3 +89,25 @@ class ProdutoSerializer(serializers.ModelSerializer):
             "em_outlet",
             "criado_em",
         ]
+
+
+class FavoritoSerializer(serializers.ModelSerializer):
+    produto = ProdutoSerializer(read_only=True)
+    # Nested ProdutoSerializer pro GET (mesmo produto sempre atual, não um
+    # snapshot congelado — diferente de ItemPedido.produto_nome/
+    # produto_tamanho, um Favorito não precisa sobreviver a uma edição
+    # futura do produto com o dado antigo). `produto_id` é o contraponto de
+    # escrita: PrimaryKeyRelatedField write_only, único jeito de o cliente
+    # indicar qual produto favoritar, já que `produto` acima é read_only.
+    produto_id = serializers.PrimaryKeyRelatedField(
+        queryset=Produto.objects.all(), source="produto", write_only=True
+    )
+
+    class Meta:
+        model = Favorito
+        # `usuario` não entra em fields — atribuído em
+        # FavoritoViewSet.perform_create(), nunca aceito do cliente (mesma
+        # proteção contra IDOR de EnderecoSerializer, só que aqui nem
+        # exposto como read_only: não há nenhum caso de uso pra devolver o
+        # dono no payload de um favorito).
+        fields = ["id", "produto", "produto_id", "criado_em"]

@@ -1,5 +1,6 @@
 import re
 
+from django.contrib.auth.models import User
 from django.db import models
 
 
@@ -174,3 +175,23 @@ class Variacao(models.Model):
 
     def __str__(self):
         return f"{self.produto.nome} - {self.tamanho}"
+
+
+class Favorito(models.Model):
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name="favoritos")
+    # CASCADE: se deletar usuário, deleta seus favoritos.
+    produto = models.ForeignKey(Produto, on_delete=models.CASCADE, related_name="favoritado_por")
+    # CASCADE: se deletar produto, deleta os favoritos que apontam pra ele —
+    # diferente de Variacao.produto (também CASCADE), não há aqui nenhum
+    # registro histórico (tipo ItemPedido) que precise sobreviver à exclusão
+    # do produto.
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Favorito"
+        verbose_name_plural = "Favoritos"
+        unique_together = ["usuario", "produto"]
+        ordering = ["-criado_em"]
+
+    def __str__(self):
+        return f"{self.usuario} - {self.produto}"

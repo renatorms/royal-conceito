@@ -14,6 +14,7 @@ import PedidoConfirmado from "@/pages/PedidoConfirmado";
 import MeusPedidos from "@/pages/MeusPedidos";
 import PedidoDetalhe from "@/pages/PedidoDetalhe";
 import MeusEnderecos from "@/pages/MeusEnderecos";
+import MeusFavoritos from "@/pages/MeusFavoritos";
 import MinhaConta from "@/pages/MinhaConta";
 import MinhaContaDados from "@/pages/MinhaContaDados";
 import TrocasDevolucoes from "@/pages/TrocasDevolucoes";
@@ -47,6 +48,7 @@ function App() {
               <Route path="/meus-pedidos" element={<MeusPedidos />} />
               <Route path="/meus-pedidos/:id" element={<PedidoDetalhe />} />
               <Route path="/meus-enderecos" element={<MeusEnderecos />} />
+              <Route path="/meus-favoritos" element={<MeusFavoritos />} />
               <Route path="/minha-conta" element={<MinhaConta />} />
               <Route path="/minha-conta/dados" element={<MinhaContaDados />} />
               <Route path="/trocas-e-devolucoes" element={<TrocasDevolucoes />} />

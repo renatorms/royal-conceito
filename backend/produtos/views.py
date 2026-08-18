@@ -1,13 +1,16 @@
+from django.db import IntegrityError
 from rest_framework import viewsets
-from rest_framework.permissions import AllowAny
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Categoria, Marca, Produto, Variacao
+from .models import Categoria, Favorito, Marca, Produto, Variacao
 from .pagination import ProdutoPagination
 from .permissions import IsAdminOrReadOnly
 from .serializers import (
     CategoriaSerializer,
+    FavoritoSerializer,
     MarcaSerializer,
     ProdutoSerializer,
     VariacaoSerializer,
@@ -44,6 +47,35 @@ class ProdutoViewSet(viewsets.ModelViewSet):
     filterset_fields = ["marca", "categoria", "em_outlet"]
     search_fields = ["nome", "marca__nome"]
     ordering_fields = ["nome", "preco", "criado_em"]
+
+
+class FavoritoViewSet(viewsets.ModelViewSet):
+    queryset = Favorito.objects.all()
+    serializer_class = FavoritoSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Sem branch de staff (diferente de PedidoViewSet/EnderecoViewSet):
+        # favorito é dado puramente pessoal do cliente, sem caso de uso de
+        # um membro da equipe precisar ver o favorito de outra pessoa.
+        return (
+            Favorito.objects.filter(usuario=self.request.user)
+            .select_related("produto__marca", "produto__categoria")
+            .prefetch_related("produto__variacoes")
+        )
+
+    def perform_create(self, serializer):
+        # unique_together=["usuario", "produto"] não pode ser validado pelo
+        # UniqueTogetherValidator automático do DRF (ele exige que ambos os
+        # campos estejam no serializer como writable, e `usuario` nem é um
+        # campo aqui — ver FavoritoSerializer). Sem isso, favoritar o mesmo
+        # produto duas vezes estouraria um IntegrityError não tratado como
+        # 500; mesmo padrão de EnderecoViewSet.perform_destroy() (ProtectedError
+        # -> ValidationError com o mesmo formato {"detail": ...}).
+        try:
+            serializer.save(usuario=self.request.user)
+        except IntegrityError:
+            raise ValidationError({"detail": "Este produto já está nos seus favoritos."})
 
 
 class CategoriaMenuView(APIView):

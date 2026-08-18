@@ -4,6 +4,7 @@ from rest_framework import routers
 from .views import (
     CategoriaMenuView,
     CategoriaViewSet,
+    FavoritoViewSet,
     MarcaViewSet,
     ProdutoViewSet,
     VariacaoViewSet,
@@ -15,6 +16,7 @@ router.register("categorias", CategoriaViewSet)
 router.register("marcas", MarcaViewSet)
 router.register("variacoes", VariacaoViewSet)
 router.register("produtos", ProdutoViewSet)
+router.register("favoritos", FavoritoViewSet)
 
 urlpatterns = [
     # Not a CRUD resource, so a plain path() rather than a router
