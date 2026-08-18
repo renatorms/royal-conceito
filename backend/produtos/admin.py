@@ -18,7 +18,7 @@ class CategoriaAdmin(admin.ModelAdmin):
 class VariacaoInline(admin.TabularInline):
     model = Variacao
     extra = 3
-    fields = ["tamanho", "estoque", "peso", "altura", "largura", "comprimento"]
+    fields = ["tamanho", "cor", "estoque", "peso", "altura", "largura", "comprimento"]
     # peso/altura/largura/comprimento (see the Variacao model comment) are
     # real, correctable measurements, not derived/protected data like
     # tamanho — no readonly concern for them, editable here on both existing
@@ -29,19 +29,20 @@ class VariacaoInline(admin.TabularInline):
     # the FK-to-parent from the inline form regardless of `fields`, tying
     # every row to the parent Produto's own id structurally (confirmed via
     # curl — no `<select name="variacoes-0-produto">` ever renders, only a
-    # hidden input). `tamanho`, unlike `produto`, *is* a real editable field
-    # here today, on both existing and new rows — same vulnerability as
-    # VariacaoAdmin.get_readonly_fields() below, reachable through this
+    # hidden input). `tamanho`/`cor`, unlike `produto`, *are* real editable
+    # fields here today, on both existing and new rows — same vulnerability
+    # as VariacaoAdmin.get_readonly_fields() below, reachable through this
     # inline too. Readonly only when the *parent* Produto already exists
     # (obj is not None) — same trade-off already accepted for
     # ItemPedidoInline (pedidos/admin.py): once a Produto exists, "Add
     # another" on its own page also loses the ability to add a genuinely new
     # Variacao via this inline, since Django applies one readonly_fields
-    # list to the whole formset, not per row. Adding a size to an existing
-    # product should go through the standalone Variacao "Add" page instead.
+    # list to the whole formset, not per row. Adding a size/color to an
+    # existing product should go through the standalone Variacao "Add" page
+    # instead.
     def get_readonly_fields(self, request, obj=None):
         if obj is not None:
-            return [*self.readonly_fields, "tamanho"]
+            return [*self.readonly_fields, "tamanho", "cor"]
         return self.readonly_fields
 
     # Fixed 2026-08-01 — a real IntegrityError 500, not just a UX rough edge:
@@ -52,14 +53,14 @@ class VariacaoInline(admin.TabularInline):
     # trying to save one of those blank rows attempts to create a Variacao
     # with an empty tamanho. With more than one blank row present at once
     # (extra=3), several such rows collide with each other on
-    # unique_together=["produto", "tamanho"] before the request even reaches
-    # the DB-level NOT NULL/blank check, surfacing as an unhandled 500 to a
-    # staff member who had no way of knowing those rows would never actually
-    # work. get_readonly_fields() only ever locked existing rows against
-    # being *edited* — it never addressed the inline still visually offering
-    # to create new ones through a path that was silently broken by that same
-    # fix. See get_extra()/has_add_permission() below for the fix, and
-    # CLAUDE.md for the full incident writeup.
+    # unique_together=["produto", "tamanho", "cor"] before the request even
+    # reaches the DB-level NOT NULL/blank check, surfacing as an unhandled
+    # 500 to a staff member who had no way of knowing those rows would never
+    # actually work. get_readonly_fields() only ever locked existing rows
+    # against being *edited* — it never addressed the inline still visually
+    # offering to create new ones through a path that was silently broken by
+    # that same fix. See get_extra()/has_add_permission() below for the fix,
+    # and CLAUDE.md for the full incident writeup.
     def get_extra(self, request, obj=None, **kwargs):
         # No blank rows once the parent Produto already exists — there's
         # nothing for them to prefill successfully once tamanho is readonly,
@@ -104,8 +105,8 @@ class ProdutoAdmin(admin.ModelAdmin):
 
 @admin.register(Variacao)
 class VariacaoAdmin(admin.ModelAdmin):
-    list_display = ["produto", "tamanho", "estoque"]
-    list_filter = ["produto__categoria", "tamanho"]
+    list_display = ["produto", "tamanho", "cor", "estoque"]
+    list_filter = ["produto__categoria", "tamanho", "cor"]
     search_fields = ["produto__nome"]
     # peso/altura/largura/comprimento (see the Variacao model comment) are
     # visible/editable on the add/change form (not restricted here — this
@@ -121,19 +122,27 @@ class VariacaoAdmin(admin.ModelAdmin):
     list_editable = ["estoque"]
 
     def get_readonly_fields(self, request, obj=None):
-        # produto/tamanho identify *which* physical item this Variacao is.
-        # Editing either on an existing Variacao doesn't just affect future
-        # sales — ItemPedido now freezes its own produto_nome/produto_tamanho
-        # at sale time (pedidos/models.py), specifically so old orders can't
-        # be rewritten this way — but a size that used to belong to product A
-        # silently starting to belong to product B is still wrong on its own,
-        # and was the actual, confirmed incident that prompted this fix (see
-        # CLAUDE.md): a real R$1000 order for "ADS COLOR" started displaying
-        # as "Camisa Teste" after its Variacao was reassigned. Readonly only
-        # when editing an existing Variacao (obj is not None): neither field
-        # has a default, so an unconditional readonly would break creating a
-        # new Variacao via the admin (no way to supply produto/tamanho, NOT
-        # NULL failure on save).
+        # produto/tamanho/cor identify *which* physical item this Variacao
+        # is. Editing any of them on an existing Variacao doesn't just
+        # affect future sales — ItemPedido now freezes its own
+        # produto_nome/produto_tamanho at sale time (pedidos/models.py),
+        # specifically so old orders can't be rewritten this way — but a
+        # size that used to belong to product A silently starting to belong
+        # to product B is still wrong on its own, and was the actual,
+        # confirmed incident that prompted this fix (see CLAUDE.md): a real
+        # R$1000 order for "ADS COLOR" started displaying as "Camisa Teste"
+        # after its Variacao was reassigned. `cor` is locked here for the
+        # same reason as `tamanho` — this project has no `ItemPedido.
+        # produto_cor` snapshot yet (deliberately out of scope for the color
+        # feature itself, see docs/produtos.md), so silently changing which
+        # color an existing Variacao id represents would be invisible from
+        # past orders too, not just current ones. Readonly only when editing
+        # an existing Variacao (obj is not None): `produto`/`tamanho` have no
+        # default, so an unconditional readonly would break creating a new
+        # Variacao via the admin (no way to supply them, NOT NULL failure on
+        # save) — `cor` does have a default ("Único") but is kept in this
+        # same conditional for consistency, since it's part of the same
+        # identity concern as tamanho, not an independent one.
         if obj is not None:
-            return [*self.readonly_fields, "produto", "tamanho"]
+            return [*self.readonly_fields, "produto", "tamanho", "cor"]
         return self.readonly_fields

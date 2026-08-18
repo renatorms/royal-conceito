@@ -25,6 +25,7 @@ export default function ProdutoDetalhe() {
   const { adicionarItem } = useCart();
   const { isAuthenticated } = useAuth();
   const [resultado, setResultado] = useState({ id: null, produto: null, erro: null });
+  const [corSelecionada, setCorSelecionada] = useState(null);
   const [variacaoId, setVariacaoId] = useState(null);
   const [quantidade, setQuantidade] = useState(1);
   const [adicionado, setAdicionado] = useState(false);
@@ -53,6 +54,7 @@ export default function ProdutoDetalhe() {
   }, [id]);
 
   useEffect(() => {
+    setCorSelecionada(null);
     setVariacaoId(null);
     setQuantidade(1);
     setAdicionado(false);
@@ -159,6 +161,26 @@ export default function ProdutoDetalhe() {
   const variacaoSelecionada = produto.variacoes.find((v) => v.id === variacaoId) || null;
   const imagemSrc = produto.imagem || produto.imagem_url;
 
+  // Cores únicas, na ordem em que aparecem em `variacoes` (já vem
+  // ordenado por tamanho do backend — ver chave_ordenacao_tamanho() em
+  // produtos/models.py — não por cor; não há requisito de uma ordem
+  // específica de cor, então a ordem de primeira aparição é suficiente).
+  const cores = [...new Set(produto.variacoes.map((v) => v.cor))];
+  const temMultiplasCores = cores.length > 1;
+  // Produto de cor única (o caso mais comum no catálogo hoje, "Único"):
+  // nenhum seletor de cor é mostrado (ver abaixo), então a lista de
+  // tamanhos usa todas as variações direto, sem filtrar por cor.
+  const variacoesVisiveis = temMultiplasCores
+    ? produto.variacoes.filter((v) => v.cor === corSelecionada)
+    : produto.variacoes;
+
+  function selecionarCor(cor) {
+    setCorSelecionada(cor);
+    setVariacaoId(null);
+    setQuantidade(1);
+    setAdicionado(false);
+  }
+
   function selecionarVariacao(variacao) {
     if (variacao.estoque <= 0) return;
     setVariacaoId(variacao.id);
@@ -221,13 +243,40 @@ export default function ProdutoDetalhe() {
             ou {NUMERO_PARCELAS}x de {formatarPreco(produto.preco / NUMERO_PARCELAS)} sem juros
           </span>
 
+          {temMultiplasCores && (
+            <div className="mt-2">
+              <h2 className="mb-2 text-sm font-medium">Cor</h2>
+              <div className="flex flex-wrap gap-2">
+                {cores.map((cor) => {
+                  const selecionada = cor === corSelecionada;
+                  return (
+                    <button
+                      key={cor}
+                      type="button"
+                      aria-pressed={selecionada}
+                      onClick={() => selecionarCor(cor)}
+                      className={cn(
+                        "rounded-md border border-border px-3 py-1.5 text-sm transition-colors hover:border-primary",
+                        selecionada && "border-primary bg-primary/10"
+                      )}
+                    >
+                      {cor}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="mt-2">
             <h2 className="mb-2 text-sm font-medium">Tamanhos disponíveis</h2>
             {produto.variacoes.length === 0 ? (
               <p className="text-sm text-muted-foreground">Sem variações cadastradas.</p>
+            ) : temMultiplasCores && !corSelecionada ? (
+              <p className="text-sm text-muted-foreground">Selecione uma cor.</p>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {produto.variacoes.map((variacao) => {
+                {variacoesVisiveis.map((variacao) => {
                   const semEstoque = variacao.estoque <= 0;
                   const selecionada = variacao.id === variacaoId;
                   return (

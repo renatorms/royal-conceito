@@ -39,6 +39,7 @@ class VariacaoSerializer(serializers.ModelSerializer):
             "produto",
             "produto_nome",
             "tamanho",
+            "cor",
             "estoque",
             "peso",
             "altura",

@@ -143,6 +143,15 @@ class Variacao(models.Model):
     )
     # CASCADE: variação não existe sem produto
     tamanho = models.CharField(max_length=3)
+    cor = models.CharField(max_length=50, default="Único")
+    # default="Único" (não um default one-off só de migration, como
+    # criado_em em Produto precisou — ali era auto_now_add, incompatível com
+    # um default de campo real): serve tanto pra preencher as Variacoes já
+    # existentes no banco quando este campo foi adicionado quanto como valor
+    # persistente pra qualquer Variacao nova que não informe uma cor real —
+    # a maioria do catálogo atual é produto de cor única, então "Único" é um
+    # valor genuinamente válido pra ficar pra sempre, não só um placeholder
+    # de migração. Produtos multi-cor recebem o valor real via Admin.
     estoque = models.IntegerField(default=0)
     peso = models.DecimalField(max_digits=5, decimal_places=3, default=0.3)
     altura = models.IntegerField(default=3)
@@ -171,10 +180,14 @@ class Variacao(models.Model):
     class Meta:
         verbose_name = "Variação"
         verbose_name_plural = "Variações"
-        unique_together = ["produto", "tamanho"]
+        unique_together = ["produto", "tamanho", "cor"]
+        # Era só ["produto", "tamanho"] antes de `cor` existir — agora a
+        # combinação cor+tamanho de um mesmo produto é que precisa ser
+        # única (ex: "Azul"/"M" e "Verde"/"M" do mesmo produto coexistem
+        # normalmente, cada uma com seu próprio estoque).
 
     def __str__(self):
-        return f"{self.produto.nome} - {self.tamanho}"
+        return f"{self.produto.nome} - {self.cor}/{self.tamanho}"
 
 
 class Favorito(models.Model):
