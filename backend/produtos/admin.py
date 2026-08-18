@@ -1,4 +1,10 @@
-from django.contrib import admin
+from django import forms
+from django.contrib import admin, messages
+from django.core.exceptions import PermissionDenied
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import path, reverse
+
+from produtos.management.commands.seed_produtos import CATEGORIAS_CONFIG
 
 from .models import Categoria, Marca, Produto, Variacao
 
@@ -90,6 +96,57 @@ class VariacaoInline(admin.TabularInline):
         return super().has_add_permission(request, obj)
 
 
+class GerarVariacoesForm(forms.Form):
+    # Formulário simples (não ModelForm) — não corresponde 1:1 a nenhum
+    # model: `cor`/`estoque_inicial` são aplicados a várias Variacoes de
+    # uma vez, e `tamanhos_padrao`/`tamanhos_extra` juntos formam a lista
+    # real de tamanhos a criar, resolvida em GerarVariacoesForm.tamanhos()
+    # abaixo, não um campo do model.
+    cor = forms.CharField(max_length=50, label="Cor")
+    tamanhos_padrao = forms.MultipleChoiceField(
+        choices=[],
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label="Tamanhos padrão da categoria",
+    )
+    tamanhos_extra = forms.CharField(
+        required=False,
+        label="Tamanhos extras",
+        help_text='Separados por vírgula, ex: "45,46" — para tamanhos fora do padrão da categoria.',
+    )
+    estoque_inicial = forms.IntegerField(min_value=0, initial=0, label="Estoque inicial")
+
+    def __init__(self, *args, tamanhos_categoria=(), **kwargs):
+        super().__init__(*args, **kwargs)
+        # `choices`/`initial` construídos por instância, não na declaração
+        # de classe acima — dependem da categoria do Produto sendo editado
+        # (ver ProdutoAdmin.gerar_variacoes_view), que só se sabe em tempo
+        # de request. Todos pré-marcados por padrão (requisito 2): `initial`
+        # só é usado por um GET inicial — num POST reenviado após erro de
+        # validação, o form já é bound e reflete o que o usuário realmente
+        # marcou, não isto.
+        self.fields["tamanhos_padrao"].choices = [(t, t) for t in tamanhos_categoria]
+        self.fields["tamanhos_padrao"].initial = list(tamanhos_categoria)
+
+    def clean(self):
+        cleaned = super().clean()
+        tamanhos_padrao = cleaned.get("tamanhos_padrao") or []
+        tamanhos_extra_raw = cleaned.get("tamanhos_extra") or ""
+        tamanhos_extra = [t.strip() for t in tamanhos_extra_raw.split(",") if t.strip()]
+        if not tamanhos_padrao and not tamanhos_extra:
+            raise forms.ValidationError(
+                "Selecione ao menos um tamanho padrão ou informe um tamanho extra."
+            )
+        return cleaned
+
+    def tamanhos(self):
+        # dict.fromkeys: une os dois conjuntos preservando ordem e sem
+        # duplicar um tamanho digitado em "extras" que também já estava
+        # marcado nos checkboxes padrão.
+        tamanhos_extra = [t.strip() for t in self.cleaned_data["tamanhos_extra"].split(",") if t.strip()]
+        return list(dict.fromkeys([*self.cleaned_data["tamanhos_padrao"], *tamanhos_extra]))
+
+
 @admin.register(Produto)
 class ProdutoAdmin(admin.ModelAdmin):
     list_display = ["nome", "preco", "marca", "categoria", "em_outlet"]
@@ -101,6 +158,98 @@ class ProdutoAdmin(admin.ModelAdmin):
     # (ver produtos/models.py e docs/produtos.md). `criado_em` não aparece
     # no form (auto_now_add é sempre definido pelo Django, nunca editável).
     inlines = [VariacaoInline]
+    # `change_form_template` não é setado explicitamente aqui — o template
+    # em produtos/templates/admin/produtos/produto/change_form.html já é
+    # descoberto automaticamente pela busca padrão de templates do
+    # ModelAdmin (admin/<app_label>/<model_name>/change_form.html), sem
+    # precisar apontar pra ele. Esse template só acrescenta um botão
+    # "Gerar variações em lote" ao object-tools existente (History/View on
+    # site), visível apenas ao editar um Produto já salvo — ver
+    # gerar_variacoes_view() abaixo e docs/produtos.md.
+
+    def get_urls(self):
+        urls = super().get_urls()
+        # Antes de `urls` (não depois): mesma convenção da documentação do
+        # Django pra ModelAdmin.get_urls() — não estritamente necessário
+        # aqui (o sufixo "/gerar-variacoes/" não colide com nenhum path
+        # padrão do Django admin, que usa sufixos fixos como "/change/"),
+        # mas seguida por consistência/clareza.
+        custom_urls = [
+            path(
+                "<int:produto_id>/gerar-variacoes/",
+                self.admin_site.admin_view(self.gerar_variacoes_view),
+                name="produtos_produto_gerar_variacoes",
+            ),
+        ]
+        return custom_urls + urls
+
+    def gerar_variacoes_view(self, request, produto_id):
+        # self.admin_site.admin_view() (aplicado em get_urls() acima) já
+        # exige request.user.is_active/is_staff antes mesmo desta view
+        # rodar — mesma proteção de qualquer página do Admin, redireciona
+        # pro login caso contrário. has_change_permission() abaixo é uma
+        # segunda checagem, no nível do objeto específico, mesmo espírito
+        # de qualquer view de change do próprio Django admin.
+        produto = get_object_or_404(Produto, pk=produto_id)
+        if not self.has_change_permission(request, produto):
+            raise PermissionDenied
+
+        tamanhos_categoria = []
+        if produto.categoria is not None:
+            config = CATEGORIAS_CONFIG.get(produto.categoria.nome)
+            # Mesma regra de aplicar_variacoes_padrao.py: uma categoria fora
+            # de CATEGORIAS_CONFIG simplesmente não tem tamanhos padrão pra
+            # pré-marcar (checkboxes vazios) — o staff ainda pode usar
+            # "Tamanhos extras" pra digitar os tamanhos à mão nesse caso,
+            # nada trava.
+            if config is not None:
+                _tipos, _faixa_preco, tamanhos_categoria = config
+
+        if request.method == "POST":
+            form = GerarVariacoesForm(request.POST, tamanhos_categoria=tamanhos_categoria)
+            if form.is_valid():
+                cor = form.cleaned_data["cor"]
+                estoque_inicial = form.cleaned_data["estoque_inicial"]
+
+                criadas = 0
+                puladas = 0
+                for tamanho in form.tamanhos():
+                    # get_or_create, não create direto: respeita
+                    # unique_together=["produto", "tamanho", "cor"] sem
+                    # estourar IntegrityError quando a combinação já existe
+                    # — mesmo padrão de aplicar_variacoes_padrao.py. peso/
+                    # altura/largura/comprimento ficam com o default do
+                    # model (não pedidos neste formulário), editáveis depois
+                    # individualmente se precisar de valor real.
+                    _, criada = Variacao.objects.get_or_create(
+                        produto=produto,
+                        tamanho=tamanho,
+                        cor=cor,
+                        defaults={"estoque": estoque_inicial},
+                    )
+                    if criada:
+                        criadas += 1
+                    else:
+                        puladas += 1
+
+                self.message_user(
+                    request,
+                    f"{criadas} variação(ões) criada(s); {puladas} já existia(m) e "
+                    "foram pulada(s).",
+                    level=messages.SUCCESS,
+                )
+                return redirect(reverse("admin:produtos_produto_change", args=[produto.pk]))
+        else:
+            form = GerarVariacoesForm(tamanhos_categoria=tamanhos_categoria)
+
+        context = {
+            **self.admin_site.each_context(request),
+            "title": f"Gerar variações em lote — {produto.nome}",
+            "produto": produto,
+            "form": form,
+            "opts": self.model._meta,
+        }
+        return render(request, "admin/produtos/produto/gerar_variacoes.html", context)
 
 
 @admin.register(Variacao)

@@ -1,0 +1,29 @@
+{% extends "admin/base_site.html" %}
+
+{% block title %}{{ title }} | {{ site_title|default:"Django site admin" }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">Início</a>
+› <a href="{% url 'admin:produtos_produto_changelist' %}">Produtos</a>
+› <a href="{% url 'admin:produtos_produto_change' produto.pk %}">{{ produto.nome }}</a>
+› Gerar variações em lote
+</div>
+{% endblock %}
+
+{% block content %}
+<p>
+  Cria uma Variação (produto + tamanho + cor + estoque) para cada tamanho
+  selecionado abaixo, usando os valores padrão do model para
+  peso/altura/largura/comprimento — ajustáveis depois, individualmente, se
+  precisar de um valor real. Uma combinação produto + tamanho + cor que já
+  existe é simplesmente pulada, nunca duplicada.
+</p>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <div class="submit-row">
+    <input type="submit" value="Gerar variações" class="default">
+  </div>
+</form>
+{% endblock %}

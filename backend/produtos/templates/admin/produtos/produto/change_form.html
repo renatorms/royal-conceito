@@ -1,0 +1,12 @@
+{% extends "admin/change_form.html" %}
+
+{% block object-tools-items %}
+  {% if original %}
+    <li>
+      <a href="{% url 'admin:produtos_produto_gerar_variacoes' original.pk %}" class="button">
+        Gerar variações em lote
+      </a>
+    </li>
+  {% endif %}
+  {{ block.super }}
+{% endblock %}
