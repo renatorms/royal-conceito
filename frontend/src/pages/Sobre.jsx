@@ -11,29 +11,31 @@ export default function Sobre() {
 
       <div className="space-y-4 text-sm leading-relaxed text-muted-foreground">
         <p>
-          A Royal Conceito nasceu da paixão por streetwear e moda premium,
-          reunindo em um só lugar as marcas e peças que definem o estilo de
-          quem não abre mão de qualidade e atitude. Trabalhamos como um
-          multimarcas, selecionando cuidadosamente cada produto do nosso
-          catálogo para garantir autenticidade, procedência e um padrão de
-          qualidade consistente em todas as categorias que vendemos —
-          calçados, roupas e acessórios.
+          A Royal Conceito nasceu para reunir, em um só lugar, o melhor do
+          streetwear e da moda premium — marcas e peças que traduzem estilo,
+          qualidade e atitude para quem não abre mão de nenhum dos três.
         </p>
 
         <p>
-          Nossa missão é aproximar o cliente das grandes marcas do universo
-          streetwear e premium, oferecendo uma experiência de compra simples,
-          segura e transparente, do catálogo ao pós-venda. Acreditamos que
-          moda é também identidade, e por isso buscamos constantemente novas
-          marcas e lançamentos para manter nosso catálogo atualizado com o
-          que há de mais relevante no mercado.
+          Trabalhamos como multimarcas, selecionando cada produto do nosso
+          catálogo com cuidado para garantir autenticidade, procedência e um
+          padrão consistente de qualidade em todas as categorias que
+          vendemos: calçados, roupas e acessórios.
         </p>
 
         <p>
-          Este texto é um placeholder genérico e será substituído pelo
-          conteúdo institucional real da Royal Conceito — história da marca,
-          valores, diferenciais e informações de contato — antes do
-          lançamento oficial da loja.
+          Nossa missão é simples — aproximar você das grandes marcas do
+          universo streetwear e premium, com uma experiência de compra
+          transparente do início ao fim: do catálogo ao pós-venda. Moda é
+          identidade, e por isso buscamos constantemente novas marcas e
+          lançamentos para manter nosso catálogo sempre atual com o que há
+          de mais relevante no mercado.
+        </p>
+
+        <p>
+          Este texto é um placeholder e será substituído pelo conteúdo
+          institucional definitivo da Royal Conceito — história da marca,
+          valores e diferenciais — antes do lançamento oficial da loja.
         </p>
       </div>
     </div>

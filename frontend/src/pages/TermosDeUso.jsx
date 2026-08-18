@@ -1,11 +1,11 @@
 // TODO: conteúdo genérico — substituir pelo texto real da Royal Conceito /
 // revisão jurídica antes de produção.
 //
-// ATENÇÃO: esta é uma estrutura PADRÃO de termos de uso (seções comuns em
-// e-commerces brasileiros), escrita apenas como placeholder de
-// desenvolvimento. NÃO tem validade jurídica e NÃO deve ser publicada em
-// produção sem revisão de um advogado (ou do cliente) — mesmo tratamento já
-// dado a Privacidade.jsx. Ver CLAUDE.md para o mesmo aviso documentado.
+// ATENÇÃO: este é um texto PADRÃO de termos de uso, escrito apenas como
+// placeholder de desenvolvimento. NÃO tem validade jurídica e NÃO deve ser
+// publicada em produção sem revisão de um advogado (ou do cliente) — mesmo
+// tratamento já dado a Privacidade.jsx. Ver CLAUDE.md para o mesmo aviso
+// documentado.
 
 export default function TermosDeUso() {
   return (
@@ -15,71 +15,31 @@ export default function TermosDeUso() {
         Última atualização: conteúdo provisório — pendente de revisão jurídica.
       </p>
 
-      <div className="space-y-6 text-sm leading-relaxed text-muted-foreground">
-        <section>
-          <h2 className="mb-2 text-base font-medium text-foreground">
-            1. Aceitação dos termos
-          </h2>
-          <p>
-            Ao acessar e utilizar o site da Royal Conceito, você concorda
-            integralmente com estes Termos de Uso. Caso não concorde com
-            qualquer disposição aqui prevista, recomendamos que não utilize
-            este site.
-          </p>
-        </section>
+      <div className="space-y-4 text-sm leading-relaxed text-muted-foreground">
+        <p>
+          Ao acessar e utilizar o site da Royal Conceito, você concorda com
+          os termos e condições descritos a seguir.
+        </p>
 
-        <section>
-          <h2 className="mb-2 text-base font-medium text-foreground">
-            2. Cadastro e responsabilidade do usuário
-          </h2>
-          <p>
-            Ao criar uma conta, você declara que as informações fornecidas
-            (nome, e-mail, endereço, telefone, entre outras) são verdadeiras,
-            completas e atualizadas. Você é responsável por manter a
-            confidencialidade da sua senha e por todas as atividades
-            realizadas através da sua conta.
-          </p>
-        </section>
+        <p>
+          O conteúdo deste site, incluindo textos, imagens, logotipos e
+          demais materiais, é de propriedade da Royal Conceito ou de seus
+          licenciadores, sendo proibida sua reprodução sem autorização
+          prévia. As informações sobre produtos, preços e disponibilidade
+          estão sujeitas a alterações sem aviso prévio.
+        </p>
 
-        <section>
-          <h2 className="mb-2 text-base font-medium text-foreground">
-            3. Pedidos, preços e disponibilidade de estoque
-          </h2>
-          <p>
-            Envidamos esforços para manter preços e estoque atualizados, mas
-            erros podem ocorrer. A Royal Conceito se reserva o direito de
-            cancelar, total ou parcialmente, qualquer pedido em que se
-            verifique erro manifesto de preço ou indisponibilidade de
-            estoque não identificada a tempo, informando o cliente e
-            providenciando o devido estorno quando aplicável.
-          </p>
-        </section>
+        <p>
+          A Royal Conceito reserva-se o direito de atualizar estes termos a
+          qualquer momento, sendo responsabilidade do usuário consultá-los
+          periodicamente.
+        </p>
 
-        <section>
-          <h2 className="mb-2 text-base font-medium text-foreground">
-            4. Propriedade intelectual
-          </h2>
-          <p>
-            Todo o conteúdo deste site — incluindo textos, imagens, logotipos,
-            marcas e layout — é de propriedade da Royal Conceito ou de
-            terceiros que autorizaram seu uso, sendo protegido pela
-            legislação de propriedade intelectual. É vedada a reprodução,
-            distribuição ou uso comercial desse conteúdo sem autorização
-            prévia e expressa.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="mb-2 text-base font-medium text-foreground">
-            5. Foro e legislação aplicável
-          </h2>
-          <p>
-            Estes Termos de Uso são regidos pela legislação brasileira. Fica
-            eleito o foro da comarca do domicílio do consumidor para dirimir
-            quaisquer controvérsias decorrentes destes termos, nos termos do
-            Código de Defesa do Consumidor.
-          </p>
-        </section>
+        <p>
+          Este texto é um placeholder genérico e será substituído pelos
+          termos de uso definitivos da Royal Conceito, redigidos e
+          revisados por um advogado, antes do lançamento oficial da loja.
+        </p>
       </div>
     </div>
   );
