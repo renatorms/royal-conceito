@@ -78,6 +78,7 @@ class ProdutoSerializer(serializers.ModelSerializer):
             "variacoes",
             "imagem",
             "imagem_url",
+            "detalhes",
             "em_outlet",
             "criado_em",
         ]

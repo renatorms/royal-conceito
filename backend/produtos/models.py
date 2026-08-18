@@ -58,6 +58,12 @@ class Produto(models.Model):
     # presente, com fallback pra imagem_url. Solução intermediária: storage
     # local do Django (MEDIA_ROOT) não é produção-ready (mesma pendência de
     # sempre sobre hospedagem real de imagem — ver CLAUDE.md/docs/produtos.md).
+    detalhes = models.TextField(blank=True)
+    # Texto livre, opcional, editável pelo Admin — descrição/ficha técnica do
+    # produto exibida na página de detalhe (frontend). blank=True (não
+    # null=True): TextField vazio já é representado por "" no banco, sem
+    # necessidade de um terceiro estado NULL; o frontend usa a string vazia
+    # pra decidir não renderizar a seção "Detalhes do produto".
     em_outlet = models.BooleanField(default=False)
     # Sem modelo de desconto/preço promocional — só marca visibilidade no
     # link direto "Outlet" do Header (HeaderNav.jsx, /?em_outlet=true).

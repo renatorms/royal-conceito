@@ -1,13 +1,20 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { MinusIcon, PlusIcon } from "lucide-react";
-import { buscarProduto } from "@/api/produtos";
+import { buscarProduto, listarProdutos } from "@/api/produtos";
+import { ProdutoCard } from "@/components/ProdutoCard";
 import { ProdutoImagemPlaceholder } from "@/components/ProdutoImagemPlaceholder";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 import { cn, formatarPreco } from "@/lib/utils";
 
 const FEEDBACK_DURATION_MS = 1500;
+
+// Número de parcelas exibido em "ou 10x de R$ XX,XX sem juros". Ajustável
+// aqui caso o parcelamento real do gateway de pagamento seja diferente.
+const NUMERO_PARCELAS = 10;
+
+const MAX_MAIS_PRODUTOS = 8;
 
 export default function ProdutoDetalhe() {
   const { id } = useParams();
@@ -16,7 +23,9 @@ export default function ProdutoDetalhe() {
   const [variacaoId, setVariacaoId] = useState(null);
   const [quantidade, setQuantidade] = useState(1);
   const [adicionado, setAdicionado] = useState(false);
+  const [resultadoMaisProdutos, setResultadoMaisProdutos] = useState({ id: null, produtos: [] });
   const isLoading = resultado.id !== id;
+  const maisProdutos = resultadoMaisProdutos.id === id ? resultadoMaisProdutos.produtos : [];
 
   useEffect(() => {
     let ignore = false;
@@ -39,6 +48,28 @@ export default function ProdutoDetalhe() {
     setQuantidade(1);
     setAdicionado(false);
   }, [id]);
+
+  useEffect(() => {
+    let ignore = false;
+
+    if (!resultado.produto?.categoria) return undefined;
+
+    listarProdutos({ categoria: resultado.produto.categoria })
+      .then((data) => {
+        if (ignore) return;
+        const relacionados = data.results
+          .filter((p) => p.id !== resultado.produto.id)
+          .slice(0, MAX_MAIS_PRODUTOS);
+        setResultadoMaisProdutos({ id, produtos: relacionados });
+      })
+      .catch(() => {
+        if (!ignore) setResultadoMaisProdutos({ id, produtos: [] });
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [id, resultado.produto]);
 
   if (isLoading) {
     return (
@@ -111,6 +142,9 @@ export default function ProdutoDetalhe() {
             <span className="text-sm text-muted-foreground">{produto.categoria_nome}</span>
           )}
           <span className="text-xl font-semibold">{formatarPreco(produto.preco)}</span>
+          <span className="text-sm text-muted-foreground">
+            ou {NUMERO_PARCELAS}x de {formatarPreco(produto.preco / NUMERO_PARCELAS)} sem juros
+          </span>
 
           <div className="mt-2">
             <h2 className="mb-2 text-sm font-medium">Tamanhos disponíveis</h2>
@@ -184,6 +218,24 @@ export default function ProdutoDetalhe() {
           </Button>
         </div>
       </div>
+
+      {produto.detalhes && (
+        <div className="mt-10">
+          <h2 className="mb-2 text-lg font-semibold">Detalhes do produto</h2>
+          <p className="whitespace-pre-line text-sm text-muted-foreground">{produto.detalhes}</p>
+        </div>
+      )}
+
+      {maisProdutos.length > 0 && (
+        <div className="mt-10">
+          <h2 className="mb-4 text-lg font-semibold">Mais produtos</h2>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {maisProdutos.map((produtoRelacionado) => (
+              <ProdutoCard key={produtoRelacionado.id} produto={produtoRelacionado} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
