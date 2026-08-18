@@ -30,6 +30,7 @@ export default function ProdutoDetalhe() {
   const [adicionado, setAdicionado] = useState(false);
   const [resultadoMaisProdutos, setResultadoMaisProdutos] = useState({ id: null, produtos: [] });
   const [resultadoFavorito, setResultadoFavorito] = useState({ id: null, favoritoId: null });
+  const [favoritoSalvando, setFavoritoSalvando] = useState(false);
   const isLoading = resultado.id !== id;
   const maisProdutos = resultadoMaisProdutos.id === id ? resultadoMaisProdutos.produtos : [];
   const favoritoId = resultadoFavorito.id === id ? resultadoFavorito.favoritoId : null;
@@ -105,23 +106,30 @@ export default function ProdutoDetalhe() {
       return;
     }
 
-    if (isFavorito) {
-      const favoritoIdAtual = favoritoId;
-      setResultadoFavorito({ id, favoritoId: null });
-      try {
-        await deletarFavorito(favoritoIdAtual);
-      } catch {
-        setResultadoFavorito({ id, favoritoId: favoritoIdAtual });
-      }
-      return;
-    }
+    if (favoritoSalvando) return;
+    setFavoritoSalvando(true);
 
-    setResultadoFavorito({ id, favoritoId: "pendente" });
     try {
-      const favorito = await criarFavorito(resultado.produto.id);
-      setResultadoFavorito({ id, favoritoId: favorito.id });
-    } catch {
-      setResultadoFavorito({ id, favoritoId: null });
+      if (isFavorito) {
+        const favoritoIdAtual = favoritoId;
+        setResultadoFavorito({ id, favoritoId: null });
+        try {
+          await deletarFavorito(favoritoIdAtual);
+        } catch {
+          setResultadoFavorito({ id, favoritoId: favoritoIdAtual });
+        }
+        return;
+      }
+
+      setResultadoFavorito({ id, favoritoId: "pendente" });
+      try {
+        const favorito = await criarFavorito(resultado.produto.id);
+        setResultadoFavorito({ id, favoritoId: favorito.id });
+      } catch {
+        setResultadoFavorito({ id, favoritoId: null });
+      }
+    } finally {
+      setFavoritoSalvando(false);
     }
   }
 
@@ -199,6 +207,7 @@ export default function ProdutoDetalhe() {
               size="icon-sm"
               aria-label={isFavorito ? "Remover dos favoritos" : "Adicionar aos favoritos"}
               aria-pressed={isFavorito}
+              disabled={favoritoSalvando}
               onClick={handleToggleFavorito}
             >
               <HeartIcon className={cn(isFavorito && "fill-destructive text-destructive")} />

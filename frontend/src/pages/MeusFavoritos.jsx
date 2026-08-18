@@ -6,6 +6,7 @@ import { ProdutoCard } from "@/components/ProdutoCard";
 
 export default function MeusFavoritos() {
   const [resultado, setResultado] = useState({ carregado: false, favoritos: [], erro: null });
+  const [removendoIds, setRemovendoIds] = useState(new Set());
 
   useEffect(() => {
     let ignore = false;
@@ -30,16 +31,27 @@ export default function MeusFavoritos() {
   }, []);
 
   async function handleRemover(favoritoId) {
-    setResultado((atual) => ({
-      ...atual,
-      favoritos: atual.favoritos.filter((f) => f.id !== favoritoId),
-    }));
+    if (removendoIds.has(favoritoId)) return;
+    setRemovendoIds((atual) => new Set(atual).add(favoritoId));
+
     try {
-      await deletarFavorito(favoritoId);
-    } catch {
-      // Falha na remoção: recarrega a lista real do backend em vez de
-      // deixar o card removido otimisticamente desaparecer por engano.
-      listarFavoritos().then((favoritos) => setResultado({ carregado: true, favoritos, erro: null }));
+      setResultado((atual) => ({
+        ...atual,
+        favoritos: atual.favoritos.filter((f) => f.id !== favoritoId),
+      }));
+      try {
+        await deletarFavorito(favoritoId);
+      } catch {
+        // Falha na remoção: recarrega a lista real do backend em vez de
+        // deixar o card removido otimisticamente desaparecer por engano.
+        listarFavoritos().then((favoritos) => setResultado({ carregado: true, favoritos, erro: null }));
+      }
+    } finally {
+      setRemovendoIds((atual) => {
+        const proximo = new Set(atual);
+        proximo.delete(favoritoId);
+        return proximo;
+      });
     }
   }
 
@@ -71,8 +83,9 @@ export default function MeusFavoritos() {
               <button
                 type="button"
                 aria-label="Remover dos favoritos"
+                disabled={removendoIds.has(favorito.id)}
                 onClick={() => handleRemover(favorito.id)}
-                className="absolute right-2 top-2 z-10 flex size-8 items-center justify-center rounded-full bg-background/90 text-foreground shadow hover:text-destructive"
+                className="absolute right-2 top-2 z-10 flex size-8 items-center justify-center rounded-full bg-background/90 text-foreground shadow hover:text-destructive disabled:opacity-50"
               >
                 <XIcon className="size-4" />
               </button>
