@@ -201,10 +201,22 @@ export default function ProdutoDetalhe() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
-      <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
-        ← Voltar ao catálogo
-      </Link>
+    <div className="mx-auto max-w-[1280px] px-4 py-8">
+      <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+        <Link to="/" className="hover:text-foreground">
+          Início
+        </Link>
+        {produto.categoria && (
+          <>
+            <span>/</span>
+            <Link to={`/?categoria=${produto.categoria}`} className="hover:text-foreground">
+              {produto.categoria_nome}
+            </Link>
+          </>
+        )}
+        <span>/</span>
+        <span className="text-foreground">{produto.nome}</span>
+      </nav>
 
       <div className="mt-4 grid gap-6 sm:grid-cols-2">
         {imagemSrc ? (
